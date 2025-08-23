@@ -15,7 +15,7 @@ interface FeedProps {
   currentUserId?: string
   onCreatePost: (data: CreatePostData) => void
   onLike: (postId: string) => void
-  onComment: (postId: string) => void
+  onComment: (postId: string, content: string) => void
   onEditPost: (post: Post) => void
   onDeletePost: (postId: string) => void
   likedPosts: Set<string>
@@ -38,7 +38,7 @@ export function Feed({
   return (
     <div className="max-w-2xl mx-auto space-y-6 p-4">
       {showCreateForm && currentUserId && (
-        <CreatePostForm onSubmit={onCreatePost} isLoading={isLoading} />
+        <CreatePostForm onSubmit={onCreatePost } isLoading={isLoading} />
       )}
       
       <div className="space-y-4">

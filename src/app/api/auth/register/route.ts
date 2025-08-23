@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin, supabase } from '@/lib/supabaseAdmin'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 // Simple validation function
 function validateRegisterData(data: unknown) {
@@ -48,18 +48,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create user with Supabase Auth
-    const { data, error } = await supabase.auth.signUp({
+    // Create user with Supabase Auth using admin client
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      options: {
-        data: {
-          username,
-        },
+      user_metadata: {
+        username,
       },
+      email_confirm: true, // Auto-confirm email for now
     })
 
     if (error) {
+      console.error('Auth user creation error:', error)
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
@@ -81,6 +81,10 @@ export async function POST(request: NextRequest) {
 
       if (profileError) {
         console.error('Profile creation error:', profileError)
+        
+        // If profile creation fails, clean up the auth user
+        await supabaseAdmin.auth.admin.deleteUser(data.user.id)
+        
         return NextResponse.json(
           { error: 'Failed to create user profile' },
           { status: 500 }
@@ -89,7 +93,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      message: 'Registration successful. Please check your email for verification.',
+      message: 'Registration successful! You can now sign in.',
       user: data.user,
     })
   } catch (error) {

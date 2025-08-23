@@ -21,9 +21,9 @@ function validatePostData(data: unknown) {
     if (typeof postData.image_url !== 'string') {
       throw new Error('Image URL must be a string')
     }
-    // Basic URL validation
-    if (postData.image_url.trim() && !isValidUrl(postData.image_url)) {
-      throw new Error('Image URL must be a valid URL')
+    const trimmedUrl = postData.image_url.trim()
+    if (trimmedUrl && !isValidUrl(trimmedUrl)) {
+      throw new Error('Image URL must be a valid URL (e.g., https://example.com/image.jpg)')
     }
   }
   

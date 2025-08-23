@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabaseClient'
+import { supabaseAdmin, supabase } from '@/lib/supabaseAdmin'
 
 // Like a post
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
+    
     const authorization = request.headers.get('authorization')
     if (!authorization) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -20,10 +22,10 @@ export async function POST(
     }
 
     // Check if post exists
-    const { data: post } = await supabase
+    const { data: post } = await supabaseAdmin
       .from('posts')
       .select('id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!post) {
@@ -31,11 +33,11 @@ export async function POST(
     }
 
     // Check if already liked
-    const { data: existingLike } = await supabase
+    const { data: existingLike } = await supabaseAdmin
       .from('likes')
       .select('id')
       .eq('user_id', user.id)
-      .eq('post_id', params.id)
+      .eq('post_id', id)
       .single()
 
     if (existingLike) {
@@ -43,11 +45,11 @@ export async function POST(
     }
 
     // Create like
-    const { error: likeError } = await supabase
+    const { error: likeError } = await supabaseAdmin
       .from('likes')
       .insert({
         user_id: user.id,
-        post_id: params.id,
+        post_id: id,
       })
 
     if (likeError) {
@@ -70,9 +72,11 @@ export async function POST(
 // Unlike a post
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
+    
     const authorization = request.headers.get('authorization')
     if (!authorization) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -86,11 +90,11 @@ export async function DELETE(
     }
 
     // Remove like
-    const { error: unlikeError } = await supabase
+    const { error: unlikeError } = await supabaseAdmin
       .from('likes')
       .delete()
       .eq('user_id', user.id)
-      .eq('post_id', params.id)
+      .eq('post_id', id)
 
     if (unlikeError) {
       return NextResponse.json(

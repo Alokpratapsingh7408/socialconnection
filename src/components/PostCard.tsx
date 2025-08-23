@@ -6,14 +6,26 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Heart, MessageCircle, Trash2, Edit, ImageOff } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Heart, MessageCircle, Trash2, Edit, ImageOff, Send } from 'lucide-react'
 import { Post } from '@/lib/supabaseClient'
+
+interface Comment {
+  id: string
+  content: string
+  user_id: string
+  created_at: string
+  user?: {
+    username: string
+    avatar_url?: string
+  }
+}
 
 interface PostCardProps {
   post: Post
   currentUserId?: string
   onLike?: (postId: string) => void
-  onComment?: (postId: string) => void
+  onComment?: (postId: string, content: string) => void
   onEdit?: (post: Post) => void
   onDelete?: (postId: string) => void
   isLiked?: boolean
@@ -29,6 +41,11 @@ export function PostCard({
   isLiked = false,
 }: PostCardProps) {
   const [imageError, setImageError] = useState(false)
+  const [showComments, setShowComments] = useState(false)
+  const [comments, setComments] = useState<Comment[]>([])
+  const [newComment, setNewComment] = useState('')
+  const [loadingComments, setLoadingComments] = useState(false)
+  const [submittingComment, setSubmittingComment] = useState(false)
   const isOwner = currentUserId === post.user_id
   const categoryColors = {
     general: 'bg-gray-100 text-gray-800',
@@ -44,6 +61,47 @@ export function PostCard({
       hour: '2-digit',
       minute: '2-digit',
     })
+  }
+
+  const loadComments = async () => {
+    if (loadingComments) return
+    
+    setLoadingComments(true)
+    try {
+      const response = await fetch(`/api/posts/${post.id}/comments`)
+      if (response.ok) {
+        const data = await response.json()
+        setComments(data)
+      }
+    } catch (error) {
+      console.error('Error loading comments:', error)
+    } finally {
+      setLoadingComments(false)
+    }
+  }
+
+  const handleCommentToggle = () => {
+    if (!showComments && comments.length === 0) {
+      loadComments()
+    }
+    setShowComments(!showComments)
+  }
+
+  const handleSubmitComment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newComment.trim() || submittingComment) return
+
+    setSubmittingComment(true)
+    try {
+      await onComment?.(post.id, newComment.trim())
+      setNewComment('')
+      // Reload comments to show the new one
+      await loadComments()
+    } catch (error) {
+      console.error('Error submitting comment:', error)
+    } finally {
+      setSubmittingComment(false)
+    }
   }
 
   return (
@@ -144,13 +202,80 @@ export function PostCard({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onComment?.(post.id)}
+            onClick={handleCommentToggle}
             className="flex items-center space-x-1 text-gray-600"
           >
             <MessageCircle className="h-4 w-4" />
             <span>{post.comment_count}</span>
           </Button>
         </div>
+
+        {/* Comments Section */}
+        {showComments && (
+          <div className="mt-4 space-y-3 border-t pt-4">
+            {/* Existing Comments */}
+            {loadingComments ? (
+              <div className="text-center text-gray-500 py-4">
+                Loading comments...
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {comments.map((comment) => (
+                  <div key={comment.id} className="flex space-x-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={comment.user?.avatar_url} />
+                      <AvatarFallback>
+                        {comment.user?.username?.charAt(0).toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="bg-gray-50 rounded-lg px-3 py-2">
+                        <p className="font-semibold text-sm">{comment.user?.username}</p>
+                        <p className="text-sm">{comment.content}</p>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formatDate(comment.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                {comments.length === 0 && (
+                  <div className="text-center text-gray-500 py-4">
+                    No comments yet. Be the first to comment!
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Add Comment Form */}
+            {currentUserId && (
+              <form onSubmit={handleSubmitComment} className="flex space-x-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback>
+                    {/* You can pass current user data if available */}
+                    U
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 flex space-x-2">
+                  <Input
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Write a comment..."
+                    className="flex-1"
+                    disabled={submittingComment}
+                  />
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={!newComment.trim() || submittingComment}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   )

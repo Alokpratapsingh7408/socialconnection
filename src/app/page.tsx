@@ -113,33 +113,21 @@ export default function Home() {
     
     try {
       if (authStep === 'register') {
-        // Register new user
-        const { data, error } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            data: {
-              username: formData.username,
-            },
-          },
+        // Register new user using our API
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
         })
 
-        if (error) {
-          setAuthError(error.message)
-        } else if (data.user && !data.session) {
-          // Email confirmation required
-          setAuthStep('check-email')
-          setAuthMessage('Please check your email and click the verification link to continue.')
-          
-          // Create user profile
-          await fetch('/api/auth/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData),
-          })
-        } else if (data.session) {
-          // Auto-login (email confirmation disabled)
-          setAuthMessage('Registration successful! Welcome to SocialConnect.')
+        if (response.ok) {
+          const data = await response.json()
+          setAuthMessage(data.message)
+          // Automatically switch to login mode
+          setAuthStep('login')
+        } else {
+          const errorData = await response.json()
+          setAuthError(errorData.error || 'Registration failed')
         }
       } else {
         // Login existing user
@@ -188,34 +176,52 @@ export default function Home() {
     setAuthMessage('Signed out successfully.')
   }
 
-  const handleCreatePost = async (postData: CreatePostData) => {
-    if (!user) return
+  const handleCreatePost = async (postData: CreatePostData): Promise<void> => {
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
     
-    setIsLoading(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        throw new Error('No valid session')
+      }
+      
+      console.log('Creating post with data:', postData)
+      
       const response = await fetch('/api/posts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify(postData),
       })
 
+      console.log('Post creation response:', response.status, response.statusText)
+
       if (response.ok) {
-        fetchPosts() // Refresh posts
+        const result = await response.json()
+        console.log('Post created successfully:', result)
+        
+        // Refresh posts
+        await fetchPosts()
+        
+        // Show success message
         setAuthMessage('Post created successfully!')
         setTimeout(() => setAuthMessage(null), 3000)
       } else {
-        const data = await response.json()
-        setAuthError(data.error || 'Failed to create post')
+        const errorData = await response.json()
+        console.error('Post creation failed:', errorData)
+        setAuthError(errorData.error || 'Failed to create post')
+        throw new Error(errorData.error || 'Failed to create post')
       }
     } catch (error) {
       console.error('Create post error:', error)
       setAuthError('Failed to create post')
+      throw error // Re-throw so the form can handle it
     }
-    setIsLoading(false)
   }
 
   const handleLike = async (postId: string) => {
@@ -257,9 +263,27 @@ export default function Home() {
     }
   }
 
-  const handleComment = (postId: string) => {
-    // TODO: Implement comment functionality
-    console.log('Comment on post:', postId)
+  const handleComment = async (postId: string, content: string) => {
+    if (!user) return
+
+    try {
+      const response = await fetch(`/api/posts/${postId}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to add comment')
+      }
+
+      // Reload posts to update comment count
+      await fetchPosts()
+    } catch (error) {
+      console.error('Error adding comment:', error)
+    }
   }
 
   const handleEditPost = (post: Post) => {
@@ -566,7 +590,7 @@ export default function Home() {
           onEditPost={handleEditPost}
           onDeletePost={handleDeletePost}
           likedPosts={likedPosts}
-          isLoading={isLoading}
+          isLoading={false}
           showCreateForm={!!(user && user.id !== 'guest') && !editingPost}
         />
       </main>

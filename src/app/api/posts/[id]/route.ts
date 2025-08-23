@@ -40,16 +40,18 @@ function validateUpdateData(data: unknown) {
 // Get a specific post
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
+    
     const { data: post, error } = await supabaseAdmin
       .from('posts')
       .select(`
         *,
         user:users(id, username, avatar_url)
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (error || !post) {
@@ -69,9 +71,11 @@ export async function GET(
 // Update a post
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
+    
     const authorization = request.headers.get('authorization')
     if (!authorization) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -88,7 +92,7 @@ export async function PATCH(
     const { data: post } = await supabaseAdmin
       .from('posts')
       .select('user_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!post || post.user_id !== user.id) {
@@ -111,7 +115,7 @@ export async function PATCH(
     const { data: updatedPost, error: updateError } = await supabaseAdmin
       .from('posts')
       .update(updates)
-      .eq('id', params.id)
+      .eq('id', id)
       .select(`
         *,
         user:users(id, username, avatar_url)
@@ -150,9 +154,11 @@ export async function PATCH(
 // Delete a post
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
+    
     const authorization = request.headers.get('authorization')
     if (!authorization) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -165,14 +171,14 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user owns the post or is admin
-    const { data: post } = await supabase
+    // Check if user owns the post or is admin using admin client
+    const { data: post } = await supabaseAdmin
       .from('posts')
       .select('user_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
-    const { data: userProfile } = await supabase
+    const { data: userProfile } = await supabaseAdmin
       .from('users')
       .select('is_admin')
       .eq('id', user.id)
@@ -182,14 +188,15 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await supabaseAdmin
       .from('posts')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (deleteError) {
+      console.error('Delete post error:', deleteError)
       return NextResponse.json(
-        { error: 'Failed to delete post' },
+        { error: 'Failed to delete post', details: deleteError.message },
         { status: 400 }
       )
     }

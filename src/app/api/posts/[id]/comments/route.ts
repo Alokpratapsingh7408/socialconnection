@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabaseClient'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { z } from 'zod'
 
 const createCommentSchema = z.object({
@@ -9,26 +10,28 @@ const createCommentSchema = z.object({
 // Get comments for a post
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { data: comments, error } = await supabase
+    const { id } = await params
+    const { data: comments, error } = await supabaseAdmin
       .from('comments')
       .select(`
         *,
         user:users(id, username, avatar_url)
       `)
-      .eq('post_id', params.id)
+      .eq('post_id', id)
       .order('created_at', { ascending: true })
 
     if (error) {
+      console.error('Comments fetch error:', error)
       return NextResponse.json(
         { error: 'Failed to fetch comments' },
         { status: 400 }
       )
     }
 
-    return NextResponse.json({ comments })
+    return NextResponse.json(comments)
   } catch (error) {
     console.error('Get comments error:', error)
     return NextResponse.json(
@@ -41,26 +44,22 @@ export async function GET(
 // Create a comment
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authorization = request.headers.get('authorization')
-    if (!authorization) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const token = authorization.replace('Bearer ', '')
-    const { data: { user }, error } = await supabase.auth.getUser(token)
-
-    if (error || !user) {
+    const { id } = await params
+    
+    // Get the session from the request
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check if post exists
-    const { data: post } = await supabase
+    const { data: post } = await supabaseAdmin
       .from('posts')
       .select('id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!post) {
@@ -70,11 +69,11 @@ export async function POST(
     const body = await request.json()
     const { content } = createCommentSchema.parse(body)
 
-    const { data: comment, error: commentError } = await supabase
+    const { data: comment, error: commentError } = await supabaseAdmin
       .from('comments')
       .insert({
-        user_id: user.id,
-        post_id: params.id,
+        user_id: session.user.id,
+        post_id: id,
         content,
       })
       .select(`
@@ -84,6 +83,7 @@ export async function POST(
       .single()
 
     if (commentError) {
+      console.error('Comment creation error:', commentError)
       return NextResponse.json(
         { error: 'Failed to create comment' },
         { status: 400 }

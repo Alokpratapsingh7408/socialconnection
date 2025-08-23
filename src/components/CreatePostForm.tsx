@@ -7,9 +7,10 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { AlertCircle } from 'lucide-react'
 
 interface CreatePostFormProps {
-  onSubmit: (data: CreatePostData) => void
+  onSubmit: (data: CreatePostData) => Promise<void>
   isLoading?: boolean
 }
 
@@ -23,18 +24,43 @@ export function CreatePostForm({ onSubmit, isLoading = false }: CreatePostFormPr
   const [content, setContent] = useState('')
   const [category, setCategory] = useState<CreatePostData['category']>('general')
   const [imageUrl, setImageUrl] = useState('')
+  const [localLoading, setLocalLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (content.trim()) {
-      onSubmit({
+    
+    if (!content.trim()) return
+    
+    // Validate image URL if provided
+    if (imageUrl.trim()) {
+      try {
+        new URL(imageUrl.trim())
+      } catch {
+        setError('Please enter a valid image URL')
+        return
+      }
+    }
+    
+    setLocalLoading(true)
+    setError(null)
+    
+    try {
+      await onSubmit({
         content: content.trim(),
         category,
         image_url: imageUrl.trim() || undefined,
       })
+      
+      // Only clear form on successful submission
       setContent('')
       setImageUrl('')
       setCategory('general')
+    } catch (err) {
+      setError('Failed to create post. Please try again.')
+      console.error('Form submission error:', err)
+    } finally {
+      setLocalLoading(false)
     }
   }
 
@@ -92,12 +118,19 @@ export function CreatePostForm({ onSubmit, isLoading = false }: CreatePostFormPr
             </div>
           </div>
 
+          {error && (
+            <div className="flex items-center space-x-2 text-red-600 text-sm">
+              <AlertCircle className="h-4 w-4" />
+              <span>{error}</span>
+            </div>
+          )}
+
           <Button 
             type="submit" 
             className="w-full" 
-            disabled={isLoading || !content.trim() || remainingChars < 0}
+            disabled={localLoading || isLoading || !content.trim() || remainingChars < 0}
           >
-            {isLoading ? 'Posting...' : 'Post'}
+            {(localLoading || isLoading) ? 'Posting...' : 'Post'}
           </Button>
         </form>
       </CardContent>
