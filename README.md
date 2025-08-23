@@ -1,36 +1,227 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SocialConnect - Social Media Application
 
-## Getting Started
+🚀 **SocialConnect** is a modern social media web application built with Next.js, TypeScript, Supabase, and Tailwind CSS. It features user authentication, posts, likes, comments, follows, real-time notifications, and an admin panel.
 
-First, run the development server:
+## 🎯 Features
 
-```bash
+### Core Functionality
+- **Authentication**: Register, login, logout with email verification
+- **User Profiles**: Customizable profiles with avatars, bio, website, location
+- **Posts**: Create, edit, delete posts with images and categories
+- **Social Features**: Like posts, follow/unfollow users
+- **Feed**: Personalized feed from followed users
+- **Real-time**: Live notifications using Supabase Realtime
+- **Admin Panel**: User management and content moderation
+
+### User Roles
+- **User**: Standard social media features
+- **Admin**: All user features plus moderation capabilities
+
+## 🛠 Technology Stack
+
+- **Frontend**: Next.js 14 with TypeScript, Tailwind CSS, shadcn/ui
+- **Backend**: Next.js API Routes
+- **Database**: PostgreSQL via Supabase
+- **Authentication**: Supabase Auth
+- **Storage**: Supabase Storage
+- **Real-time**: Supabase Realtime
+- **Deployment**: Vercel + Supabase
+
+## 📋 Prerequisites
+
+- Node.js 18+ 
+- npm or yarn
+- Supabase account
+- Git
+
+## 🚀 Quick Start
+
+### 1. Clone and Install
+
+\`\`\`bash
+git clone <your-repo-url>
+cd socialconnection
+npm install
+\`\`\`
+
+### 2. Set up Supabase
+
+1. Create a new project at [supabase.com](https://supabase.com)
+2. Go to Settings > API to get your keys
+3. Copy the database schema from \`database-schema.sql\`
+4. Run it in the Supabase SQL Editor
+
+### 3. Environment Variables
+
+Create \`.env.local\` file:
+
+\`\`\`env
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+JWT_SECRET=your-jwt-secret
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+\`\`\`
+
+### 4. Run the Application
+
+\`\`\`bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+\`\`\`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📂 Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+\`\`\`
+src/
+├── app/
+│   ├── api/
+│   │   ├── auth/          # Authentication endpoints
+│   │   ├── posts/         # Posts CRUD + likes
+│   │   ├── users/         # User profiles + follows
+│   │   └── ...
+│   ├── globals.css        # Global styles
+│   ├── layout.tsx         # Root layout
+│   └── page.tsx           # Home page
+├── components/
+│   ├── ui/                # shadcn/ui components
+│   ├── AuthForm.tsx       # Login/Register form
+│   ├── Feed.tsx           # Main feed component
+│   ├── PostCard.tsx       # Individual post display
+│   └── CreatePostForm.tsx # Create new post
+└── lib/
+    ├── supabaseClient.ts  # Supabase configuration
+    └── utils.ts           # Utility functions
+\`\`\`
 
-## Learn More
+## 🔧 API Endpoints
 
-To learn more about Next.js, take a look at the following resources:
+### Authentication
+- \`POST /api/auth/register\` - User registration
+- \`POST /api/auth/login\` - User login
+- \`POST /api/auth/logout\` - User logout
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Users
+- \`GET /api/users/[id]\` - Get user profile
+- \`GET /api/users/me\` - Get current user profile
+- \`PATCH /api/users/me\` - Update current user profile
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Posts
+- \`POST /api/posts\` - Create new post
+- \`GET /api/posts\` - Get posts (paginated)
+- \`GET /api/posts/[id]\` - Get specific post
+- \`PATCH /api/posts/[id]\` - Update post
+- \`DELETE /api/posts/[id]\` - Delete post
+- \`POST /api/posts/[id]/like\` - Like post
+- \`DELETE /api/posts/[id]/like\` - Unlike post
 
-## Deploy on Vercel
+## 🗄 Database Schema
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The application uses PostgreSQL with the following main tables:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **users** - User profiles and settings
+- **posts** - User posts with content and metadata
+- **likes** - Post likes tracking
+- **follows** - User follow relationships
+- **comments** - Post comments (coming soon)
+- **notifications** - Real-time notifications
+
+Run the complete schema from \`database-schema.sql\` in your Supabase project.
+
+## 🚦 Development
+
+### Install Dependencies
+\`\`\`bash
+npm install
+\`\`\`
+
+### Run Development Server
+\`\`\`bash
+npm run dev
+\`\`\`
+
+### Build for Production
+\`\`\`bash
+npm run build
+npm start
+\`\`\`
+
+### Lint Code
+\`\`\`bash
+npm run lint
+\`\`\`
+
+## 🌟 Key Features Implementation
+
+### Authentication Flow
+1. User registers with email/username/password
+2. Supabase sends verification email
+3. User profile created in custom users table
+4. JWT tokens managed by Supabase Auth
+
+### Post Creation
+1. User creates post with content/image/category
+2. Image stored in Supabase Storage
+3. Post metadata stored in database
+4. Real-time updates via Supabase
+
+### Social Features
+- **Likes**: Optimistic UI updates for instant feedback
+- **Following**: User relationship tracking
+- **Feed**: Personalized content from followed users
+
+## 🔐 Security Features
+
+- Row Level Security (RLS) on all tables
+- JWT token validation
+- Input validation with Zod
+- CORS protection
+- Rate limiting (production recommended)
+
+## 🚀 Deployment
+
+### Vercel Deployment
+1. Push code to GitHub
+2. Connect repository to Vercel
+3. Add environment variables
+4. Deploy automatically
+
+### Supabase Configuration
+1. Set up RLS policies
+2. Configure storage buckets
+3. Enable real-time features
+4. Set up email templates
+
+## 📝 Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| \`NEXT_PUBLIC_SUPABASE_URL\` | Supabase project URL | ✅ |
+| \`NEXT_PUBLIC_SUPABASE_ANON_KEY\` | Supabase anonymous key | ✅ |
+| \`SUPABASE_SERVICE_ROLE_KEY\` | Supabase service role key | ✅ |
+| \`JWT_SECRET\` | JWT signing secret | ✅ |
+| \`NEXT_PUBLIC_APP_URL\` | Application URL | ✅ |
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 🆘 Support
+
+For support and questions:
+- Check the documentation
+- Review the database schema
+- Open an issue on GitHub
+
+---
+
+**Built with ❤️ using Next.js, Supabase, and modern web technologies.**
