@@ -267,16 +267,25 @@ export default function Home() {
     if (!user) return
 
     try {
+      // Get the current session to get the access token
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        console.error('No access token available')
+        return
+      }
+
       const response = await fetch(`/api/posts/${postId}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ content }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to add comment')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to add comment')
       }
 
       // Reload posts to update comment count
@@ -360,14 +369,14 @@ export default function Home() {
   // Email verification page
   if (authStep === 'check-email') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-              <Mail className="w-6 h-6 text-blue-600" />
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-xl border-0 rounded-3xl overflow-hidden">
+          <CardHeader className="text-center bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+            <div className="mx-auto w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mb-4">
+              <Mail className="w-8 h-8 text-white" />
             </div>
-            <CardTitle>Check Your Email</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-xl">Check Your Email</CardTitle>
+            <CardDescription className="text-purple-100">
               We sent a verification link to <strong>{userEmail}</strong>
             </CardDescription>
           </CardHeader>
@@ -423,15 +432,17 @@ export default function Home() {
   // Authentication page
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md space-y-6">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">SocialConnect</h1>
-            <p className="text-gray-600">Connect with friends and share your thoughts</p>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-3">
+              SocialConnect
+            </h1>
+            <p className="text-gray-600 text-lg">Connect with friends and share your thoughts</p>
           </div>
           
-          <Card>
-            <CardHeader>
+          <Card className="shadow-xl border-0 rounded-3xl overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
               <div className="flex justify-center space-x-1 mb-4">
                 <Button
                   onClick={() => {
@@ -439,8 +450,9 @@ export default function Home() {
                     setAuthError(null)
                     setAuthMessage(null)
                   }}
-                  variant={authStep === 'login' ? 'default' : 'outline'}
+                  variant={authStep === 'login' ? 'secondary' : 'ghost'}
                   size="sm"
+                  className={authStep === 'login' ? 'bg-white text-purple-600' : 'text-white hover:bg-white/20'}
                 >
                   Sign In
                 </Button>
@@ -450,8 +462,9 @@ export default function Home() {
                     setAuthError(null)
                     setAuthMessage(null)
                   }}
-                  variant={authStep === 'register' ? 'default' : 'outline'}
+                  variant={authStep === 'register' ? 'secondary' : 'ghost'}
                   size="sm"
+                  className={authStep === 'register' ? 'bg-white text-purple-600' : 'text-white hover:bg-white/20'}
                 >
                   Sign Up
                 </Button>
@@ -486,7 +499,7 @@ export default function Home() {
               onClick={() => {
                 setUser({ id: 'guest' } as User)
               }}
-              className="text-sm"
+              className="text-sm bg-white/80 border-purple-200 hover:bg-purple-50 hover:border-purple-300 rounded-full px-6 py-2"
             >
               Continue as Guest
             </Button>
@@ -497,7 +510,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
       {/* Success/Error Messages Bar */}
       {(authMessage || authError) && (
         <div className={`w-full p-3 text-center text-sm font-medium ${
@@ -525,59 +538,160 @@ export default function Home() {
         </div>
       )}
 
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">SocialConnect</h1>
-          <div className="flex items-center space-x-4">
-            {user && user.id !== 'guest' ? (
-              <>
-                <Link href="/discover">
-                  <Button variant="ghost" size="sm">
-                    <Users className="w-4 h-4 mr-2" />
-                    Discover
-                  </Button>
-                </Link>
-                <Link href="/notifications">
-                  <Button variant="ghost" size="sm">
-                    <Bell className="w-4 h-4 mr-2" />
-                    Notifications
-                  </Button>
-                </Link>
-                <Link href={`/users/${user.id}`}>
-                  <Button variant="ghost" size="sm">
-                    <UserIcon className="w-4 h-4 mr-2" />
-                    Profile
-                  </Button>
-                </Link>
-                {user.user_metadata?.is_admin && (
-                  <Link href="/admin">
-                    <Button variant="ghost" size="sm">
-                      <Shield className="w-4 h-4 mr-2" />
-                      Admin
+      {/* Modern Header */}
+      <header className="bg-white/95 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-4 py-3">
+          {/* Desktop Header */}
+          <div className="hidden md:flex justify-between items-center">
+            <Link href="/" className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              SocialConnect
+            </Link>
+            
+            <div className="flex items-center space-x-6">
+              {user && user.id !== 'guest' ? (
+                <>
+                  <Link href="/">
+                    <Button variant="ghost" size="sm" className="text-gray-700 hover:text-black hover:bg-gray-100 rounded-xl">
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2.5c-5.25 0-9.5 4.25-9.5 9.5s4.25 9.5 9.5 9.5 9.5-4.25 9.5-9.5-4.25-9.5-9.5-9.5zm0 1.5c4.42 0 8 3.58 8 8s-3.58 8-8 8-8-3.58-8-8 3.58-8 8-8zm-1 4v3h-3v2h3v3h2v-3h3v-2h-3v-3h-2z"/>
+                      </svg>
                     </Button>
                   </Link>
-                )}
-                <span className="text-sm text-gray-600">
-                  Welcome back!
-                </span>
-                <Button onClick={handleLogout} variant="outline">
-                  Sign Out
+                  <Link href="/discover">
+                    <Button variant="ghost" size="sm" className="text-gray-700 hover:text-black hover:bg-gray-100 rounded-xl">
+                      <Users className="w-6 h-6" />
+                    </Button>
+                  </Link>
+                  <Link href="/notifications">
+                    <Button variant="ghost" size="sm" className="text-gray-700 hover:text-black hover:bg-gray-100 rounded-xl relative">
+                      <Bell className="w-6 h-6" />
+                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+                    </Button>
+                  </Link>
+                  <Link href={`/users/${user.id}`}>
+                    <Button variant="ghost" size="sm" className="text-gray-700 hover:text-black hover:bg-gray-100 rounded-xl">
+                      <UserIcon className="w-6 h-6" />
+                    </Button>
+                  </Link>
+                  {user.user_metadata?.is_admin && (
+                    <Link href="/admin">
+                      <Button variant="ghost" size="sm" className="text-gray-700 hover:text-black hover:bg-gray-100 rounded-xl">
+                        <Shield className="w-6 h-6" />
+                      </Button>
+                    </Link>
+                  )}
+                  <Button 
+                    onClick={handleLogout} 
+                    variant="ghost" 
+                    size="sm"
+                    className="text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-xl font-medium"
+                  >
+                    Sign Out
+                  </Button>
+                </>
+              ) : (
+                <Button 
+                  onClick={() => setUser(null)}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl px-6"
+                >
+                  Sign In
                 </Button>
-              </>
-            ) : (
-              <Button onClick={() => setUser(null)}>
-                Sign In
-              </Button>
-            )}
+              )}
+            </div>
+          </div>
+
+          {/* Mobile Header */}
+          <div className="md:hidden flex justify-between items-center">
+            <Link href="/" className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              SocialConnect
+            </Link>
+            
+            <div className="flex items-center space-x-4">
+              {user && user.id !== 'guest' ? (
+                <>
+                  <Link href="/notifications">
+                    <Button variant="ghost" size="sm" className="text-gray-700 hover:text-black hover:bg-gray-100 rounded-xl relative p-2">
+                      <Bell className="w-5 h-5" />
+                      <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+                    </Button>
+                  </Link>
+                  <Link href={`/users/${user.id}`}>
+                    <Button variant="ghost" size="sm" className="text-gray-700 hover:text-black hover:bg-gray-100 rounded-xl p-2">
+                      <UserIcon className="w-5 h-5" />
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                <Button 
+                  onClick={() => setUser(null)}
+                  size="sm"
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl px-4"
+                >
+                  Sign In
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
+      {/* Mobile Bottom Navigation */}
+      {user && user.id !== 'guest' && (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 z-50">
+          <div className="flex justify-around items-center py-2 px-4">
+            <Link href="/">
+              <Button variant="ghost" size="sm" className="flex flex-col items-center space-y-1 text-gray-600 hover:text-black rounded-xl p-3">
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2.5c-5.25 0-9.5 4.25-9.5 9.5s4.25 9.5 9.5 9.5 9.5-4.25 9.5-9.5-4.25-9.5-9.5-9.5zm0 1.5c4.42 0 8 3.58 8 8s-3.58 8-8 8-8-3.58-8-8 3.58-8 8-8zm-1 4v3h-3v2h3v3h2v-3h3v-2h-3v-3h-2z"/>
+                </svg>
+                <span className="text-xs">Home</span>
+              </Button>
+            </Link>
+            
+            <Link href="/discover">
+              <Button variant="ghost" size="sm" className="flex flex-col items-center space-y-1 text-gray-600 hover:text-black rounded-xl p-3">
+                <Users className="w-6 h-6" />
+                <span className="text-xs">Discover</span>
+              </Button>
+            </Link>
+            
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="flex flex-col items-center space-y-1 text-gray-600 hover:text-black rounded-xl p-3"
+              onClick={() => {
+                // Scroll to create post form or trigger create modal
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="text-xs">Create</span>
+            </Button>
+            
+            <Link href="/notifications">
+              <Button variant="ghost" size="sm" className="flex flex-col items-center space-y-1 text-gray-600 hover:text-black rounded-xl p-3 relative">
+                <Bell className="w-6 h-6" />
+                <span className="text-xs">Activity</span>
+                <span className="absolute top-2 right-3 w-2 h-2 bg-red-500 rounded-full"></span>
+              </Button>
+            </Link>
+            
+            <Link href={`/users/${user.id}`}>
+              <Button variant="ghost" size="sm" className="flex flex-col items-center space-y-1 text-gray-600 hover:text-black rounded-xl p-3">
+                <UserIcon className="w-6 h-6" />
+                <span className="text-xs">Profile</span>
+              </Button>
+            </Link>
+          </div>
+        </nav>
+      )}
+
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto py-8">
+      <main className="max-w-6xl mx-auto py-8 pb-24 md:pb-8">
         {editingPost && (
-          <div className="mb-6">
+          <div className="mb-6 px-4">
             <EditPostForm
               post={editingPost}
               onSubmit={handleUpdatePost}
@@ -587,18 +701,20 @@ export default function Home() {
           </div>
         )}
         
-        <Feed
-          posts={posts}
-          currentUserId={user?.id !== 'guest' ? user?.id : undefined}
-          onCreatePost={handleCreatePost}
-          onLike={handleLike}
-          onComment={handleComment}
-          onEditPost={handleEditPost}
-          onDeletePost={handleDeletePost}
-          likedPosts={likedPosts}
-          isLoading={false}
-          showCreateForm={!!(user && user.id !== 'guest') && !editingPost}
-        />
+        <div className="px-4 md:px-0">
+          <Feed
+            posts={posts}
+            currentUserId={user?.id !== 'guest' ? user?.id : undefined}
+            onCreatePost={handleCreatePost}
+            onLike={handleLike}
+            onComment={handleComment}
+            onEditPost={handleEditPost}
+            onDeletePost={handleDeletePost}
+            likedPosts={likedPosts}
+            isLoading={false}
+            showCreateForm={!!(user && user.id !== 'guest') && !editingPost}
+          />
+        </div>
       </main>
     </div>
   )

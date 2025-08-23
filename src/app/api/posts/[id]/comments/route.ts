@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabaseClient'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { z } from 'zod'
 
@@ -49,9 +48,17 @@ export async function POST(
   try {
     const { id } = await params
     
-    // Get the session from the request
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) {
+    // Get the authorization token from the request
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const token = authHeader.substring(7) // Remove 'Bearer ' prefix
+    
+    // Verify the user with the token
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -72,7 +79,7 @@ export async function POST(
     const { data: comment, error: commentError } = await supabaseAdmin
       .from('comments')
       .insert({
-        user_id: session.user.id,
+        user_id: user.id,
         post_id: id,
         content,
       })
