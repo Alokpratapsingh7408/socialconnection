@@ -3,9 +3,10 @@ import { supabase } from '@/lib/supabaseClient'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const { data: following, error } = await supabase
       .from('follows')
       .select(`
@@ -15,7 +16,7 @@ export async function GET(
           id, username, avatar_url
         )
       `)
-      .eq('follower_id', params.id)
+      .eq('follower_id', id)
       .order('created_at', { ascending: false })
 
     if (error) {

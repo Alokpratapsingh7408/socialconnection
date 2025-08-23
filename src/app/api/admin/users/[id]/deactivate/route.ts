@@ -24,9 +24,10 @@ async function checkAdminPermission(token: string) {
 // Deactivate user (admin only)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const authorization = request.headers.get('authorization')
     if (!authorization) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -43,7 +44,7 @@ export async function POST(
     const { data: user } = await supabase
       .from('users')
       .select('id, is_active')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!user) {
@@ -57,7 +58,7 @@ export async function POST(
         is_active: !user.is_active,
         updated_at: new Date().toISOString()
       })
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (updateError) {
       return NextResponse.json(

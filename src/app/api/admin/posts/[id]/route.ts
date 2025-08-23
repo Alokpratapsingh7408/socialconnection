@@ -24,9 +24,10 @@ async function checkAdminPermission(token: string) {
 // Delete post (admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const authorization = request.headers.get('authorization')
     if (!authorization) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -43,7 +44,7 @@ export async function DELETE(
     const { data: post } = await supabase
       .from('posts')
       .select('id, user_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!post) {
@@ -54,7 +55,7 @@ export async function DELETE(
     const { error: deleteError } = await supabase
       .from('posts')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (deleteError) {
       return NextResponse.json(

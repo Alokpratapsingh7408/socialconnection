@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { supabase, Post } from '@/lib/supabaseClient'
 import { User } from '@supabase/supabase-js'
-import { Bell, User as UserIcon, Shield, CheckCircle, AlertCircle, Mail } from 'lucide-react'
+import { Bell, User as UserIcon, Shield, CheckCircle, AlertCircle, Mail, Users } from 'lucide-react'
 import Link from 'next/link'
 
 interface CreatePostData {
@@ -532,6 +532,12 @@ export default function Home() {
           <div className="flex items-center space-x-4">
             {user && user.id !== 'guest' ? (
               <>
+                <Link href="/discover">
+                  <Button variant="ghost" size="sm">
+                    <Users className="w-4 h-4 mr-2" />
+                    Discover
+                  </Button>
+                </Link>
                 <Link href="/notifications">
                   <Button variant="ghost" size="sm">
                     <Bell className="w-4 h-4 mr-2" />

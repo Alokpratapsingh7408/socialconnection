@@ -24,9 +24,10 @@ async function checkAdminPermission(token: string) {
 // Get specific user (admin only)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const authorization = request.headers.get('authorization')
     if (!authorization) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -42,7 +43,7 @@ export async function GET(
     const { data: user, error } = await supabase
       .from('users')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (error || !user) {

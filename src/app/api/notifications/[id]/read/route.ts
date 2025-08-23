@@ -4,9 +4,10 @@ import { supabase } from '@/lib/supabaseClient'
 // Mark specific notification as read
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const authorization = request.headers.get('authorization')
     if (!authorization) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -22,7 +23,7 @@ export async function POST(
     const { error: updateError } = await supabase
       .from('notifications')
       .update({ is_read: true })
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
 
     if (updateError) {
