@@ -99,13 +99,15 @@ export async function POST(
 
     // Create notification for post owner (if not commenting on own post)
     if (post.user_id !== user.id) {
+      console.log('Creating comment notification for user:', post.user_id)
+      
       const { data: commenter } = await supabaseAdmin
         .from('users')
         .select('username')
         .eq('id', user.id)
         .single()
 
-      await supabaseAdmin
+      const { data: notification, error: notificationError } = await supabaseAdmin
         .from('notifications')
         .insert({
           user_id: post.user_id,
@@ -115,6 +117,14 @@ export async function POST(
           related_post_id: id,
           is_read: false
         })
+        .select()
+        .single()
+
+      if (notificationError) {
+        console.error('Error creating comment notification:', notificationError)
+      } else {
+        console.log('Comment notification created successfully:', notification)
+      }
     }
 
     return NextResponse.json({

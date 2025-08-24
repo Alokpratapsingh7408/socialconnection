@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { 
   Home, 
   Search, 
-  Heart, 
+  Bell, 
   PlusSquare, 
   User, 
   MessageCircle,
@@ -64,10 +64,10 @@ export function ModernLayout({ children, user, onLogout }: ModernLayoutProps) {
         : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
     }`}>
       <div className="relative">
-        <Heart className={`w-6 h-6 ${pathname === '/notifications' ? 'text-white' : 'group-hover:scale-110 transition-transform'}`} />
+        <Bell className={`w-6 h-6 ${pathname === '/notifications' ? 'text-white' : 'group-hover:scale-110 transition-transform'}`} />
         <NotificationBell 
           userId={user?.id} 
-          className="absolute -top-2 -right-2 w-0 h-0"
+          className="absolute -top-1 -right-1"
         />
       </div>
       <span className={`font-medium ${pathname === '/notifications' ? 'text-white' : ''}`}>

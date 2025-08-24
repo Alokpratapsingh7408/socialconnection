@@ -74,13 +74,15 @@ export async function POST(
     }
 
     // Create notification for the followed user
+    console.log('Creating follow notification for user:', followingId)
+    
     const { data: follower } = await supabaseAdmin
       .from('users')
       .select('username')
       .eq('id', user.id)
       .single()
 
-    await supabaseAdmin
+    const { data: notification, error: notificationError } = await supabaseAdmin
       .from('notifications')
       .insert({
         user_id: followingId,
@@ -89,6 +91,14 @@ export async function POST(
         related_user_id: user.id,
         is_read: false
       })
+      .select()
+      .single()
+
+    if (notificationError) {
+      console.error('Error creating follow notification:', notificationError)
+    } else {
+      console.log('Follow notification created successfully:', notification)
+    }
 
     return NextResponse.json({ message: 'User followed successfully' })
   } catch (error) {

@@ -16,6 +16,8 @@ export function Notifications({ userId }: NotificationsProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
 
+  console.log('Notifications component - userId:', userId)
+
   useEffect(() => {
     if (userId) {
       fetchNotifications()

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Feed } from '@/components/Feed'
 import { AuthForm } from '@/components/AuthForm'
 import { EditPostForm } from '@/components/EditPostForm'
+import { NotificationBell } from '@/components/NotificationBell'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { supabase, Post, User as DBUser } from '@/lib/supabaseClient'
@@ -595,7 +596,10 @@ export default function Home() {
                   <Link href="/notifications">
                     <Button variant="ghost" size="sm" className="text-gray-700 hover:text-black hover:bg-gray-100 rounded-xl relative">
                       <Bell className="w-6 h-6" />
-                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+                      <NotificationBell 
+                        userId={user?.id !== 'guest' ? user?.id : undefined} 
+                        className="absolute -top-1 -right-1"
+                      />
                     </Button>
                   </Link>
                   <Link href={`/users/${user.id}`}>
@@ -642,12 +646,15 @@ export default function Home() {
             <div className="flex items-center space-x-4">
               {user && user.id !== 'guest' ? (
                 <>
-                  <Link href="/notifications">
+                  {/* <Link href="/notifications">
                     <Button variant="ghost" size="sm" className="text-gray-700 hover:text-black hover:bg-gray-100 rounded-xl relative p-2">
                       <Bell className="w-5 h-5" />
-                      <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+                      <NotificationBell 
+                        userId={user?.id !== 'guest' ? user?.id : undefined} 
+                        className="absolute -top-1 -right-1"
+                      />
                     </Button>
-                  </Link>
+                  </Link> */}
                   <Link href={`/users/${user.id}`}>
                     <Button variant="ghost" size="sm" className="text-gray-700 hover:text-black hover:bg-gray-100 rounded-xl p-2 flex items-center space-x-2">
                       <UserIcon className="w-5 h-5" />
@@ -708,9 +715,14 @@ export default function Home() {
             
             <Link href="/notifications">
               <Button variant="ghost" size="sm" className="flex flex-col items-center space-y-1 text-gray-600 hover:text-black rounded-xl p-3 relative">
-                <Bell className="w-6 h-6" />
+                <div className="relative">
+                  <Bell className="w-6 h-6" />
+                  <NotificationBell 
+                    userId={user?.id !== 'guest' ? user?.id : undefined} 
+                    className="absolute -top-1 -right-4"
+                  />
+                </div>
                 <span className="text-xs">Activity</span>
-                <span className="absolute top-2 right-3 w-2 h-2 bg-red-500 rounded-full"></span>
               </Button>
             </Link>
             

@@ -1,9 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
-import { Bell } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 
 interface NotificationBellProps {
@@ -29,11 +27,25 @@ export function NotificationBell({ userId, className = '' }: NotificationBellPro
         }
       })
     }
-  }, [userId])
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Refresh count when component becomes visible (e.g., when navigating back to feed)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && userId) {
+        console.log('NotificationBell: Page became visible, refreshing count')
+        fetchUnreadCount()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchUnreadCount = async () => {
     if (!userId) return
     
+    console.log('NotificationBell: Fetching unread count for user:', userId)
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const response = await fetch('/api/notifications?unread_only=true', {
@@ -44,10 +56,13 @@ export function NotificationBell({ userId, className = '' }: NotificationBellPro
 
       if (response.ok) {
         const data = await response.json()
+        console.log('NotificationBell: Unread count received:', data.unread_count)
         setUnreadCount(data.unread_count || 0)
+      } else {
+        console.error('NotificationBell: Failed to fetch unread count:', response.status)
       }
     } catch (error) {
-      console.error('Error fetching unread count:', error)
+      console.error('NotificationBell: Error fetching unread count:', error)
     }
   }
 
@@ -56,7 +71,7 @@ export function NotificationBell({ userId, className = '' }: NotificationBellPro
 
     console.log('Setting up notification bell subscription for user:', userId)
 
-    const channel = supabase
+    supabase
       .channel('notification-bell')
       .on(
         'postgres_changes',
@@ -76,20 +91,27 @@ export function NotificationBell({ userId, className = '' }: NotificationBellPro
       })
   }
 
-  const handleRealtimeUpdate = (payload: any) => {
+  const handleRealtimeUpdate = (payload: {
+    eventType: string
+    new?: Record<string, unknown>
+    old?: Record<string, unknown>
+  }) => {
+    console.log('NotificationBell real-time update:', payload)
     const { eventType, new: newRecord, old: oldRecord } = payload
 
     switch (eventType) {
       case 'INSERT':
         // New notification - increment unread count if it's unread
-        if (!newRecord.is_read) {
+        if (newRecord && !newRecord.is_read) {
+          console.log('NotificationBell: Incrementing count for new notification')
           setUnreadCount(prev => prev + 1)
         }
         break
 
       case 'UPDATE':
         // Notification updated - check if read status changed
-        if (oldRecord.is_read !== newRecord.is_read) {
+        if (newRecord && oldRecord && oldRecord.is_read !== newRecord.is_read) {
+          console.log('NotificationBell: Read status changed', { old: oldRecord.is_read, new: newRecord.is_read })
           setUnreadCount(prev => 
             newRecord.is_read ? Math.max(0, prev - 1) : prev + 1
           )
@@ -98,7 +120,8 @@ export function NotificationBell({ userId, className = '' }: NotificationBellPro
 
       case 'DELETE':
         // Notification deleted - decrease count if it was unread
-        if (!oldRecord.is_read) {
+        if (oldRecord && !oldRecord.is_read) {
+          console.log('NotificationBell: Decrementing count for deleted notification')
           setUnreadCount(prev => Math.max(0, prev - 1))
         }
         break
@@ -106,19 +129,15 @@ export function NotificationBell({ userId, className = '' }: NotificationBellPro
   }
 
   return (
-    <Link 
-      href="/notifications" 
-      className={`relative inline-flex items-center justify-center ${className}`}
-    >
-      <Bell className="h-6 w-6" />
+    <>
       {unreadCount > 0 && (
         <Badge 
           variant="destructive" 
-          className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center text-xs p-0 rounded-full animate-pulse"
+          className={`h-4 w-4 flex items-center justify-center text-xs rounded-full animate-pulse border-2 border-white ${className}`}
         >
           {unreadCount > 99 ? '99+' : unreadCount}
         </Badge>
       )}
-    </Link>
+    </>
   )
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabaseClient'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 // Get user notifications
 export async function GET(request: NextRequest) {
@@ -16,6 +17,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    console.log('Fetching notifications for user:', user.id)
+
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = 20
@@ -24,18 +27,20 @@ export async function GET(request: NextRequest) {
 
     if (unreadOnly) {
       // Return only unread count
-      const { count: unreadCount } = await supabase
+      const { count: unreadCount, error: countError } = await supabaseAdmin
         .from('notifications')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
         .eq('is_read', false)
+
+      console.log('Unread count query result:', { unreadCount, countError })
 
       return NextResponse.json({ 
         unread_count: unreadCount || 0
       })
     }
 
-    const { data: notifications, error: notifError } = await supabase
+    const { data: notifications, error: notifError } = await supabaseAdmin
       .from('notifications')
       .select(`
         *,
@@ -44,6 +49,8 @@ export async function GET(request: NextRequest) {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
+
+    console.log('Notifications query result:', { notifications, notifError })
 
     if (notifError) {
       return NextResponse.json(
@@ -81,18 +88,23 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { error: updateError } = await supabase
+    console.log('Marking all notifications as read for user:', user.id)
+
+    const { error: updateError } = await supabaseAdmin
       .from('notifications')
       .update({ is_read: true })
       .eq('user_id', user.id)
       .eq('is_read', false)
 
     if (updateError) {
+      console.error('Error marking all notifications as read:', updateError)
       return NextResponse.json(
         { error: 'Failed to mark notifications as read' },
         { status: 400 }
       )
     }
+
+    console.log('All notifications marked as read successfully')
 
     return NextResponse.json({ message: 'All notifications marked as read' })
   } catch (error) {

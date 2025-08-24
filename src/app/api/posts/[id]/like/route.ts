@@ -61,13 +61,15 @@ export async function POST(
 
     // Create notification for post owner (if not liking own post)
     if (post.user_id !== user.id) {
+      console.log('Creating like notification for user:', post.user_id)
+      
       const { data: liker } = await supabaseAdmin
         .from('users')
         .select('username')
         .eq('id', user.id)
         .single()
 
-      await supabaseAdmin
+      const { data: notification, error: notificationError } = await supabaseAdmin
         .from('notifications')
         .insert({
           user_id: post.user_id,
@@ -77,6 +79,14 @@ export async function POST(
           related_post_id: id,
           is_read: false
         })
+        .select()
+        .single()
+
+      if (notificationError) {
+        console.error('Error creating like notification:', notificationError)
+      } else {
+        console.log('Like notification created successfully:', notification)
+      }
     }
 
     return NextResponse.json({ message: 'Post liked successfully' })

@@ -17,22 +17,60 @@ export default function NotificationsPage() {
 
   const checkUser = async () => {
     try {
+      console.log('Checking user session...')
       const { data: { session } } = await supabase.auth.getSession()
+      console.log('Session:', session)
+      
       if (session?.user) {
+        console.log('User found in session:', session.user.id)
         const response = await fetch('/api/users/me', {
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
           },
         })
+        console.log('API response status:', response.status)
+        
         if (response.ok) {
           const userData = await response.json()
-          setCurrentUser(userData)
+          console.log('User data:', userData)
+          // The API returns {profile: {...}} so we need to access the profile property
+          setCurrentUser(userData.profile || userData)
+        } else {
+          console.error('Failed to fetch user data:', response.status)
         }
+      } else {
+        console.log('No session or user found')
       }
     } catch (error) {
       console.error('Error fetching user:', error)
     }
     setIsLoading(false)
+  }
+
+  const testNotification = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+
+      const response = await fetch('/api/admin/posts', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'test',
+          message: 'Test notification from admin panel',
+          user_id: currentUser?.id
+        })
+      })
+
+      if (response.ok) {
+        console.log('Test notification created')
+      }
+    } catch (error) {
+      console.error('Error creating test notification:', error)
+    }
   }
 
   if (isLoading) {
