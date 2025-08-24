@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabaseClient'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 // Check if user is admin
 async function checkAdminPermission(token: string) {
@@ -41,7 +42,7 @@ export async function POST(
     }
 
     // Check if user exists
-    const { data: user } = await supabase
+    const { data: user } = await supabaseAdmin
       .from('users')
       .select('id, is_active')
       .eq('id', id)
@@ -52,7 +53,7 @@ export async function POST(
     }
 
     // Toggle user active status
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from('users')
       .update({ 
         is_active: !user.is_active,
@@ -61,6 +62,7 @@ export async function POST(
       .eq('id', id)
 
     if (updateError) {
+      console.error('Update user error:', updateError)
       return NextResponse.json(
         { error: 'Failed to update user status' },
         { status: 400 }

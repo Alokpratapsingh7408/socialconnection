@@ -54,15 +54,22 @@ export default function AdminDashboard() {
 
       if (response.ok) {
         const userData = await response.json()
-        setCurrentUser(userData)
+        console.log('Admin check - user data:', userData)
+        setCurrentUser(userData.profile || userData)
         
-        if (userData.is_admin) {
+        // Check if user is admin (handle both response formats)
+        const isAdmin = userData.profile?.is_admin || userData.is_admin
+        console.log('Admin check - is_admin:', isAdmin)
+        
+        if (isAdmin) {
           setIsAuthorized(true)
           fetchAdminStats()
         } else {
+          console.log('User is not admin, access denied')
           setIsLoading(false)
         }
       } else {
+        console.error('Failed to fetch user data:', response.status)
         setIsLoading(false)
       }
     } catch (error) {
@@ -211,7 +218,7 @@ export default function AdminDashboard() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.total_users}</div>
+              <div className="text-2xl font-bold">{stats.total_users || 0}</div>
             </CardContent>
           </Card>
 
@@ -221,7 +228,7 @@ export default function AdminDashboard() {
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.total_posts}</div>
+              <div className="text-2xl font-bold">{stats.total_posts || 0}</div>
             </CardContent>
           </Card>
 
@@ -231,7 +238,7 @@ export default function AdminDashboard() {
               <Heart className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.total_likes}</div>
+              <div className="text-2xl font-bold">{stats.total_likes || 0}</div>
             </CardContent>
           </Card>
 
@@ -241,7 +248,7 @@ export default function AdminDashboard() {
               <MessageCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.total_comments}</div>
+              <div className="text-2xl font-bold">{stats.total_comments || 0}</div>
             </CardContent>
           </Card>
         </div>
@@ -254,38 +261,42 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {stats.recent_users.map((user) => (
-                  <div key={user.id} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={user.avatar_url} />
-                        <AvatarFallback>
-                          {(user.username || user.email)?.[0]?.toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-sm font-medium">
-                          {user.username || 'Unnamed User'}
-                        </p>
-                        <p className="text-xs text-gray-500">{user.email}</p>
+                {stats.recent_users && stats.recent_users.length > 0 ? (
+                  stats.recent_users.map((user) => (
+                    <div key={user.id} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={user.avatar_url} />
+                          <AvatarFallback>
+                            {(user.username || user.email)?.[0]?.toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-medium">
+                            {user.username || 'Unnamed User'}
+                          </p>
+                          <p className="text-xs text-gray-500">{user.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant={user.is_active ? "default" : "destructive"}>
+                          {user.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                        {user.is_active && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeactivateUser(user.id)}
+                          >
+                            <UserX className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant={user.is_active ? "default" : "destructive"}>
-                        {user.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                      {user.is_active && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDeactivateUser(user.id)}
-                        >
-                          <UserX className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-center py-4">No recent users found</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -297,30 +308,34 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {stats.recent_posts.map((post) => (
-                  <div key={post.id} className="border-b border-gray-200 pb-4 last:border-b-0">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-900 mb-2">{post.content}</p>
-                        <div className="flex items-center space-x-4 text-xs text-gray-500">
-                          <span>
-                            by {post.user?.username || 'Unknown User'}
-                          </span>
-                          <span>{post.like_count} likes</span>
-                          <span>{post.comment_count} comments</span>
+                {stats.recent_posts && stats.recent_posts.length > 0 ? (
+                  stats.recent_posts.map((post) => (
+                    <div key={post.id} className="border-b border-gray-200 pb-4 last:border-b-0">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-900 mb-2">{post.content}</p>
+                          <div className="flex items-center space-x-4 text-xs text-gray-500">
+                            <span>
+                              by {post.users?.username || 'Unknown User'}
+                            </span>
+                            <span>{post.like_count || 0} likes</span>
+                            <span>{post.comment_count || 0} comments</span>
+                          </div>
                         </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeletePost(post.id)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDeletePost(post.id)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-center py-4">No recent posts found</p>
+                )}
               </div>
             </CardContent>
           </Card>

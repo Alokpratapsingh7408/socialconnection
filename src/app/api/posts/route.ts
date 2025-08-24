@@ -155,18 +155,25 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
+    const userId = searchParams.get('userId') // Get userId filter
     const limit = 20
     const offset = (page - 1) * limit
 
-    // Use admin client to bypass RLS for reading posts
-    const { data: posts, error } = await supabaseAdmin
+    // Build query
+    let query = supabaseAdmin
       .from('posts')
       .select(`
         *,
-        user:users(id, username, avatar_url)
+        users!posts_user_id_fkey(id, username, avatar_url)
       `)
       .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
+
+    // If userId is provided, filter posts by that user
+    if (userId) {
+      query = query.eq('user_id', userId)
+    }
+
+    const { data: posts, error } = await query.range(offset, offset + limit - 1)
 
     if (error) {
       console.error('Get posts error:', error)

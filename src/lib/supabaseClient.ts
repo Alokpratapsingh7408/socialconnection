@@ -35,6 +35,10 @@ export interface Post {
   created_at: string
   updated_at: string
   user?: User
+  users?: {
+    id: string
+    username: string
+  }
 }
 
 export interface Follow {

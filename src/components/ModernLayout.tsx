@@ -17,16 +17,29 @@ import {
   X,
   Shield
 } from 'lucide-react'
-import { User as SupabaseUser } from '@supabase/supabase-js'
 import { NotificationBell } from './NotificationBell'
 
 interface ModernLayoutProps {
   children: React.ReactNode
-  user?: SupabaseUser | null
+  user?: {
+    id: string
+    email?: string
+    user_metadata?: { 
+      is_admin?: boolean
+      username?: string
+      avatar_url?: string
+      full_name?: string
+    }
+  }
+  userProfile?: {
+    username?: string
+    avatar_url?: string
+    is_admin?: boolean
+  }
   onLogout?: () => void
 }
 
-export function ModernLayout({ children, user, onLogout }: ModernLayoutProps) {
+export function ModernLayout({ children, user, userProfile, onLogout }: ModernLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const pathname = usePathname()
 
@@ -37,9 +50,11 @@ export function ModernLayout({ children, user, onLogout }: ModernLayoutProps) {
     { href: `/users/${user?.id}`, icon: User, label: 'Profile', active: pathname === `/users/${user?.id}` },
   ]
 
-  if (user?.user_metadata?.is_admin) {
+  // Check admin status from both user metadata and profile
+  if (user?.user_metadata?.is_admin || userProfile?.is_admin) {
     navItems.push({ href: '/admin', icon: Shield, label: 'Admin', active: pathname === '/admin' })
   }
+
 
   const NavItem = ({ href, icon: Icon, label, active }: { 
     href: string, 
@@ -104,14 +119,14 @@ export function ModernLayout({ children, user, onLogout }: ModernLayoutProps) {
             <div className="flex-shrink-0 px-4 pb-4">
               <div className="flex items-center space-x-3 p-3 rounded-xl bg-gray-50 border">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src={user.user_metadata?.avatar_url} />
+                  <AvatarImage src={userProfile?.avatar_url || user.user_metadata?.avatar_url} />
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
-                    {user.email?.charAt(0).toUpperCase()}
+                    {(userProfile?.username || user.user_metadata?.username || user.email)?.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">
-                    {user.user_metadata?.username || user.email}
+                    {userProfile?.username || user.user_metadata?.username || user.email}
                   </p>
                   <p className="text-xs text-gray-500">Online</p>
                 </div>
@@ -141,9 +156,9 @@ export function ModernLayout({ children, user, onLogout }: ModernLayoutProps) {
         <div className="flex items-center space-x-3">
           {user && (
             <Avatar className="h-8 w-8">
-              <AvatarImage src={user.user_metadata?.avatar_url} />
+              <AvatarImage src={userProfile?.avatar_url || user.user_metadata?.avatar_url} />
               <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm">
-                {user.email?.charAt(0).toUpperCase()}
+                {(userProfile?.username || user.user_metadata?.username || user.email)?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
           )}

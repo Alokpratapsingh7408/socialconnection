@@ -610,7 +610,7 @@ export default function Home() {
                       )}
                     </Button>
                   </Link>
-                  {user.user_metadata?.is_admin && (
+                  {(user.user_metadata?.is_admin || userProfile?.is_admin) && (
                     <Link href="/admin">
                       <Button variant="ghost" size="sm" className="text-gray-700 hover:text-black hover:bg-gray-100 rounded-xl">
                         <Shield className="w-6 h-6" />

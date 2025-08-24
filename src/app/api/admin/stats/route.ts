@@ -82,25 +82,45 @@ export async function GET(request: NextRequest) {
       .from('follows')
       .select('*', { count: 'exact', head: true })
 
+    // Get recent users (last 10 registered)
+    const { data: recentUsers } = await supabase
+      .from('users')
+      .select('id, username, email, created_at, is_active')
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    // Get recent posts (last 10 posts with user info)
+    const { data: recentPosts } = await supabase
+      .from('posts')
+      .select(`
+        id, 
+        content, 
+        created_at,
+        like_count,
+        comment_count,
+        users!posts_user_id_fkey (
+          id,
+          username
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .limit(10)
+
     const stats = {
-      users: {
-        total: totalUsers || 0,
-        active: activeUsers || 0,
-        activeToday: usersActiveToday || 0,
-      },
-      posts: {
-        total: totalPosts || 0,
-        today: postsToday || 0,
-      },
-      engagement: {
-        totalLikes: totalLikes || 0,
-        totalComments: totalComments || 0,
-        totalFollows: totalFollows || 0,
-      },
+      total_users: totalUsers || 0,
+      active_users: activeUsers || 0,
+      users_active_today: usersActiveToday || 0,
+      total_posts: totalPosts || 0,
+      posts_today: postsToday || 0,
+      total_likes: totalLikes || 0,
+      total_comments: totalComments || 0,
+      total_follows: totalFollows || 0,
+      recent_users: recentUsers || [],
+      recent_posts: recentPosts || [],
       timestamp: new Date().toISOString(),
     }
 
-    return NextResponse.json({ stats })
+    return NextResponse.json(stats)
   } catch (error) {
     console.error('Admin get stats error:', error)
     return NextResponse.json(
