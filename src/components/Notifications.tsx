@@ -1,43 +1,152 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Bell, Heart, MessageCircle, UserPlus } from 'lucide-react'
-import { Notification } from '@/lib/supabaseClient'
+import { Notification as NotificationType, supabase } from '@/lib/supabaseClient'
 
 interface NotificationsProps {
   userId?: string
 }
 
 export function Notifications({ userId }: NotificationsProps) {
-  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [notifications, setNotifications] = useState<NotificationType[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
     if (userId) {
       fetchNotifications()
+      setupRealtimeSubscription()
     }
-  }, [userId])
+
+    return () => {
+      // Cleanup subscription on unmount
+      supabase.removeAllChannels()
+    }
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const setupRealtimeSubscription = () => {
+    if (!userId) return
+
+    console.log('Setting up real-time notifications subscription for user:', userId)
+
+    // Subscribe to notifications table changes for the current user
+    const channel = supabase
+      .channel('notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          console.log('Real-time notification received:', payload)
+          handleRealtimeNotification(payload)
+        }
+      )
+      .subscribe((status) => {
+        console.log('Notifications subscription status:', status)
+      })
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }
+
+  const handleRealtimeNotification = async (payload: {
+    eventType: string
+    new?: Record<string, unknown>
+    old?: Record<string, unknown>
+  }) => {
+    const { eventType, new: newRecord, old: oldRecord } = payload
+
+    switch (eventType) {
+      case 'INSERT':
+        // New notification received
+        if (!newRecord) return
+        console.log('New notification:', newRecord)
+        
+        // Fetch the complete notification with related user data
+        const { data: completeNotification } = await supabase
+          .from('notifications')
+          .select(`
+            *,
+            related_user:users!notifications_related_user_id_fkey(id, username, avatar_url)
+          `)
+          .eq('id', newRecord.id as string)
+          .single()
+
+        if (completeNotification) {
+          setNotifications(prev => [completeNotification, ...prev])
+          if (!completeNotification.is_read) {
+            setUnreadCount(prev => prev + 1)
+            
+            // Show browser notification if permission is granted
+            if (window.Notification && window.Notification.permission === 'granted') {
+              new window.Notification('New notification', {
+                body: completeNotification.message,
+                icon: '/favicon.ico'
+              })
+            }
+          }
+        }
+        break
+
+      case 'UPDATE':
+        // Notification updated (e.g., marked as read)
+        if (!newRecord || !oldRecord) return
+        console.log('Notification updated:', newRecord)
+        setNotifications(prev =>
+          prev.map(notif =>
+            notif.id === newRecord.id
+              ? { ...notif, ...newRecord }
+              : notif
+          )
+        )
+        
+        // Update unread count if read status changed
+        if (oldRecord.is_read !== newRecord.is_read) {
+          setUnreadCount(prev => 
+            newRecord.is_read ? Math.max(0, prev - 1) : prev + 1
+          )
+        }
+        break
+
+      case 'DELETE':
+        // Notification deleted
+        if (!oldRecord) return
+        console.log('Notification deleted:', oldRecord)
+        setNotifications(prev =>
+          prev.filter(notif => notif.id !== oldRecord.id)
+        )
+        if (!oldRecord.is_read) {
+          setUnreadCount(prev => Math.max(0, prev - 1))
+        }
+        break
+    }
+  }
 
   const fetchNotifications = async () => {
     if (!userId) return
     
     setIsLoading(true)
     try {
+      const { data: { session } } = await supabase.auth.getSession()
       const response = await fetch('/api/notifications', {
         headers: {
-          'Authorization': `Bearer ${await getAccessToken()}`,
+          'Authorization': `Bearer ${session?.access_token}`,
         },
       })
 
       if (response.ok) {
         const data = await response.json()
         setNotifications(data.notifications || [])
-        setUnreadCount(data.notifications?.filter((n: Notification) => !n.is_read).length || 0)
+        setUnreadCount(data.notifications?.filter((n: NotificationType) => !n.is_read).length || 0)
       }
     } catch (error) {
       console.error('Error fetching notifications:', error)
@@ -46,10 +155,16 @@ export function Notifications({ userId }: NotificationsProps) {
   }
 
   const getAccessToken = async () => {
-    // This would typically get the token from your auth context
-    // For now, we'll use a placeholder
-    return 'placeholder-token'
+    const { data: { session } } = await supabase.auth.getSession()
+    return session?.access_token || ''
   }
+
+  // Request notification permission on component mount
+  useEffect(() => {
+    if ('Notification' in window && window.Notification.permission === 'default') {
+      window.Notification.requestPermission()
+    }
+  }, [])
 
   const markAsRead = async (notificationId: string) => {
     try {

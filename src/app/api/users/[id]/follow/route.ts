@@ -73,6 +73,23 @@ export async function POST(
       )
     }
 
+    // Create notification for the followed user
+    const { data: follower } = await supabaseAdmin
+      .from('users')
+      .select('username')
+      .eq('id', user.id)
+      .single()
+
+    await supabaseAdmin
+      .from('notifications')
+      .insert({
+        user_id: followingId,
+        type: 'follow',
+        message: `${follower?.username || 'Someone'} started following you`,
+        related_user_id: user.id,
+        is_read: false
+      })
+
     return NextResponse.json({ message: 'User followed successfully' })
   } catch (error) {
     console.error('Follow user error:', error)

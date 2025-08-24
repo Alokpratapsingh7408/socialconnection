@@ -62,10 +62,10 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if post exists
+    // Check if post exists and get post owner
     const { data: post } = await supabaseAdmin
       .from('posts')
-      .select('id')
+      .select('id, user_id, content')
       .eq('id', id)
       .single()
 
@@ -95,6 +95,26 @@ export async function POST(
         { error: 'Failed to create comment' },
         { status: 400 }
       )
+    }
+
+    // Create notification for post owner (if not commenting on own post)
+    if (post.user_id !== user.id) {
+      const { data: commenter } = await supabaseAdmin
+        .from('users')
+        .select('username')
+        .eq('id', user.id)
+        .single()
+
+      await supabaseAdmin
+        .from('notifications')
+        .insert({
+          user_id: post.user_id,
+          type: 'comment',
+          message: `${commenter?.username || 'Someone'} commented on your post`,
+          related_user_id: user.id,
+          related_post_id: id,
+          is_read: false
+        })
     }
 
     return NextResponse.json({

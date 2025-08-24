@@ -18,6 +18,7 @@ import {
   Shield
 } from 'lucide-react'
 import { User as SupabaseUser } from '@supabase/supabase-js'
+import { NotificationBell } from './NotificationBell'
 
 interface ModernLayoutProps {
   children: React.ReactNode
@@ -32,7 +33,6 @@ export function ModernLayout({ children, user, onLogout }: ModernLayoutProps) {
   const navItems = [
     { href: '/', icon: Home, label: 'Home', active: pathname === '/' },
     { href: '/discover', icon: Search, label: 'Discover', active: pathname === '/discover' },
-    { href: '/notifications', icon: Heart, label: 'Notifications', active: pathname === '/notifications' },
     { href: '/create', icon: PlusSquare, label: 'Create', active: pathname === '/create' },
     { href: `/users/${user?.id}`, icon: User, label: 'Profile', active: pathname === `/users/${user?.id}` },
   ]
@@ -57,6 +57,25 @@ export function ModernLayout({ children, user, onLogout }: ModernLayoutProps) {
     </Link>
   )
 
+  const NotificationNavItem = () => (
+    <Link href="/notifications" className={`flex items-center space-x-3 px-3 py-2 rounded-xl transition-all duration-200 group ${
+      pathname === '/notifications'
+        ? 'bg-gray-900 text-white shadow-lg' 
+        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+    }`}>
+      <div className="relative">
+        <Heart className={`w-6 h-6 ${pathname === '/notifications' ? 'text-white' : 'group-hover:scale-110 transition-transform'}`} />
+        <NotificationBell 
+          userId={user?.id} 
+          className="absolute -top-2 -right-2 w-0 h-0"
+        />
+      </div>
+      <span className={`font-medium ${pathname === '/notifications' ? 'text-white' : ''}`}>
+        Notifications
+      </span>
+    </Link>
+  )
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Desktop Sidebar */}
@@ -77,6 +96,7 @@ export function ModernLayout({ children, user, onLogout }: ModernLayoutProps) {
             {navItems.map((item) => (
               <NavItem key={item.href} {...item} />
             ))}
+            <NotificationNavItem />
           </nav>
 
           {/* User Profile & Logout */}

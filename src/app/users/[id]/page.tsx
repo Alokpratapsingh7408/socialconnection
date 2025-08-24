@@ -15,6 +15,7 @@ export default function UserProfile() {
   
   const [user, setUser] = useState<User | null>(null)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
   const [isFollowing, setIsFollowing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -31,21 +32,42 @@ export default function UserProfile() {
   const fetchCurrentUser = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
+      console.log('Session check:', session ? 'exists' : 'no session')
+      
       if (session?.user) {
+        // Set current user ID immediately from session
+        setCurrentUserId(session.user.id)
+        
         const response = await fetch('/api/users/me', {
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
           },
         })
+        console.log('API response status:', response.status)
+        
         if (response.ok) {
           const userData = await response.json()
+          console.log('Current user data:', userData)
           setCurrentUser(userData)
-          checkFollowStatus(userData.id)
-          fetchLikedPosts(userData.id)
+          // Only call these functions if we have a valid user ID
+          if (userData && userData.id) {
+            checkFollowStatus(userData.id)
+            fetchLikedPosts(userData.id)
+          }
+        } else {
+          console.error('API call failed:', response.status, response.statusText)
+          // Even if API fails, we still have the user ID from session
         }
+      } else {
+        // No session means user is not authenticated
+        console.log('No session found - user not authenticated')
+        setCurrentUser(null)
+        setCurrentUserId(null)
       }
     } catch (error) {
       console.error('Error fetching current user:', error)
+      setCurrentUser(null)
+      setCurrentUserId(null)
     }
   }
 
@@ -75,6 +97,11 @@ export default function UserProfile() {
   }
 
   const fetchLikedPosts = async (currentUserId: string) => {
+    if (!currentUserId) {
+      console.warn('Cannot fetch liked posts: currentUserId is undefined')
+      return
+    }
+    
     try {
       const { data } = await supabase
         .from('likes')
@@ -90,7 +117,10 @@ export default function UserProfile() {
   }
 
   const checkFollowStatus = async (currentUserId: string) => {
-    if (currentUserId === userId) return
+    if (!currentUserId || currentUserId === userId) {
+      console.warn('Cannot check follow status: currentUserId is undefined or same as target user')
+      return
+    }
 
     try {
       const { data } = await supabase
@@ -151,6 +181,57 @@ export default function UserProfile() {
       }
     } catch (error) {
       console.error('Error unfollowing user:', error)
+    }
+  }
+
+  const handleProfileUpdate = async (data: {
+    username: string
+    bio: string
+    avatar_url: string
+    website: string
+    location: string
+  }) => {
+    console.log('handleProfileUpdate called with:', data)
+    console.log('Current user:', currentUser)
+    console.log('User ID from URL:', userId)
+    
+    // Fix: Access the correct user ID from the nested structure
+    const currentUserObj = currentUser as { profile?: { id: string } } & { id?: string }
+    const currentUserId = currentUserObj?.profile?.id || currentUserObj?.id
+    console.log('Current user ID:', currentUserId)
+    console.log('Can update?', currentUser && currentUserId === userId)
+    
+    if (!currentUser || currentUserId !== userId) {
+      console.log('Cannot update profile - either not logged in or not own profile')
+      return
+    }
+
+    try {
+      console.log('Making API call to update profile...')
+      const { data: { session } } = await supabase.auth.getSession()
+      const response = await fetch('/api/users/me', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify(data),
+      })
+
+      console.log('API response status:', response.status)
+      
+      if (response.ok) {
+        const updatedUser = await response.json()
+        console.log('Profile updated successfully:', updatedUser)
+        setUser(updatedUser)
+      } else {
+        const errorText = await response.text()
+        console.error('API error response:', errorText)
+        throw new Error('Failed to update profile')
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      throw error
     }
   }
 
@@ -240,10 +321,11 @@ export default function UserProfile() {
           <div className="lg:col-span-1">
             <ProfileCard
               user={user}
-              currentUserId={currentUser?.id}
+              currentUserId={currentUser?.id || currentUserId || undefined}
               isFollowing={isFollowing}
               onFollow={handleFollow}
               onUnfollow={handleUnfollow}
+              onProfileUpdate={handleProfileUpdate}
             />
           </div>
 
@@ -258,7 +340,7 @@ export default function UserProfile() {
               {posts.length > 0 ? (
                 <Feed
                   posts={posts}
-                  currentUserId={currentUser?.id}
+                  currentUserId={currentUser?.id || currentUserId || undefined}
                   onCreatePost={() => {}} // Not used on profile pages
                   onLike={handleLike}
                   onComment={() => {}}

@@ -6,7 +6,7 @@ import { AuthForm } from '@/components/AuthForm'
 import { EditPostForm } from '@/components/EditPostForm'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { supabase, Post } from '@/lib/supabaseClient'
+import { supabase, Post, User as DBUser } from '@/lib/supabaseClient'
 import { User } from '@supabase/supabase-js'
 import { Bell, User as UserIcon, Shield, CheckCircle, AlertCircle, Mail, Users } from 'lucide-react'
 import Link from 'next/link'
@@ -27,6 +27,7 @@ type AuthStep = 'login' | 'register' | 'verify-email' | 'check-email'
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null)
+  const [userProfile, setUserProfile] = useState<DBUser | null>(null) // Full profile data with username, bio, etc.
   const [posts, setPosts] = useState<Post[]>([])
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(false)
@@ -36,11 +37,33 @@ export default function Home() {
   const [userEmail, setUserEmail] = useState<string>('')
   const [editingPost, setEditingPost] = useState<Post | null>(null)
 
+  // Function to fetch full user profile data
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const response = await fetch('/api/users/me', {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setUserProfile(data.profile || data) // Handle different API response formats
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error)
+    }
+  }
+
   useEffect(() => {
     // Check for existing session
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user || null)
+      if (session?.user) {
+        setUser(session.user)
+        await fetchUserProfile(session.user.id)
+      }
     }
     
     checkSession()
@@ -55,10 +78,12 @@ export default function Home() {
           setAuthStep('login')
           setAuthMessage(null)
           setAuthError(null)
+          await fetchUserProfile(session.user.id)
           await fetchPosts()
           await fetchLikedPosts(session.user.id)
         } else if (event === 'SIGNED_OUT') {
           setUser(null)
+          setUserProfile(null)
           setPosts([])
           setLikedPosts(new Set())
           setAuthStep('login')
@@ -91,6 +116,11 @@ export default function Home() {
   }
 
   const fetchLikedPosts = async (userId: string) => {
+    if (!userId) {
+      console.warn('Cannot fetch liked posts: userId is undefined')
+      return
+    }
+    
     try {
       const { data } = await supabase
         .from('likes')
@@ -569,8 +599,11 @@ export default function Home() {
                     </Button>
                   </Link>
                   <Link href={`/users/${user.id}`}>
-                    <Button variant="ghost" size="sm" className="text-gray-700 hover:text-black hover:bg-gray-100 rounded-xl">
-                      <UserIcon className="w-6 h-6" />
+                    <Button variant="ghost" size="sm" className="text-gray-700 hover:text-black hover:bg-gray-100 rounded-xl flex items-center space-x-2">
+                      <UserIcon className="w-5 h-5" />
+                      {userProfile?.username && (
+                        <span className="hidden md:inline font-medium">{userProfile.username}</span>
+                      )}
                     </Button>
                   </Link>
                   {user.user_metadata?.is_admin && (
@@ -616,8 +649,11 @@ export default function Home() {
                     </Button>
                   </Link>
                   <Link href={`/users/${user.id}`}>
-                    <Button variant="ghost" size="sm" className="text-gray-700 hover:text-black hover:bg-gray-100 rounded-xl p-2">
+                    <Button variant="ghost" size="sm" className="text-gray-700 hover:text-black hover:bg-gray-100 rounded-xl p-2 flex items-center space-x-2">
                       <UserIcon className="w-5 h-5" />
+                      {userProfile?.username && (
+                        <span className="text-sm font-medium">{userProfile.username}</span>
+                      )}
                     </Button>
                   </Link>
                 </>

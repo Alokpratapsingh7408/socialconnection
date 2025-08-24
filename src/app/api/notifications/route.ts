@@ -20,6 +20,20 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = 20
     const offset = (page - 1) * limit
+    const unreadOnly = searchParams.get('unread_only') === 'true'
+
+    if (unreadOnly) {
+      // Return only unread count
+      const { count: unreadCount } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false)
+
+      return NextResponse.json({ 
+        unread_count: unreadCount || 0
+      })
+    }
 
     const { data: notifications, error: notifError } = await supabase
       .from('notifications')
