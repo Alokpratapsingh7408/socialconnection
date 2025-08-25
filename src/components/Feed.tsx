@@ -13,7 +13,7 @@ interface CreatePostData {
 interface FeedProps {
   posts: Post[]
   currentUserId?: string
-  onCreatePost: (data: CreatePostData) => void
+  onCreatePost: (data: CreatePostData) => Promise<void>
   onLike: (postId: string) => void
   onComment: (postId: string, content: string) => void
   onEditPost: (post: Post) => void
