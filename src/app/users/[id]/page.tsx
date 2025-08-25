@@ -341,11 +341,11 @@ export default function UserProfile() {
                 <Feed
                   posts={posts}
                   currentUserId={currentUser?.id || currentUserId || undefined}
-                  onCreatePost={() => {}} // Not used on profile pages
+                  onCreatePost={async () => {}} // Not used on profile pages - async empty function
                   onLike={handleLike}
-                  onComment={() => {}}
+                  onComment={async () => {}} // Also fix this one to be async
                   onEditPost={() => {}}
-                  onDeletePost={() => {}}
+                  onDeletePost={async () => {}} // Fix this one too
                   likedPosts={likedPosts}
                   showCreateForm={false}
                 />

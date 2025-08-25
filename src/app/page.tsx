@@ -223,11 +223,18 @@ export default function Home() {
     }
     
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      // Always refresh the session before making API calls to ensure valid token
+      const { data: { session }, error } = await supabase.auth.refreshSession()
       
-      if (!session?.access_token) {
-        throw new Error('No valid session')
+      if (error || !session?.access_token) {
+        // If refresh fails, try to get the current session as fallback
+        const { data: { session: currentSession } } = await supabase.auth.getSession()
+        if (!currentSession?.access_token) {
+          throw new Error('Authentication session expired. Please sign in again.')
+        }
       }
+      
+      const activeSession = session || await supabase.auth.getSession().then(({ data: { session } }) => session)
       
       console.log('Creating post with data:', postData)
       
@@ -235,7 +242,7 @@ export default function Home() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${activeSession?.access_token}`,
         },
         body: JSON.stringify(postData),
       })
@@ -255,7 +262,13 @@ export default function Home() {
       } else {
         const errorData = await response.json()
         console.error('Post creation failed:', errorData)
-        setAuthError(errorData.error || 'Failed to create post')
+        
+        // Handle authentication errors specifically
+        if (response.status === 401) {
+          setAuthError('Your session has expired. Please sign in again.')
+        } else {
+          setAuthError(errorData.error || 'Failed to create post')
+        }
         throw new Error(errorData.error || 'Failed to create post')
       }
     } catch (error) {
