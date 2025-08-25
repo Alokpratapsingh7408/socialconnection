@@ -47,32 +47,6 @@ export default function NotificationsPage() {
     setIsLoading(false)
   }
 
-  const testNotification = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      const response = await fetch('/api/admin/posts', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          type: 'test',
-          message: 'Test notification from admin panel',
-          user_id: currentUser?.id
-        })
-      })
-
-      if (response.ok) {
-        console.log('Test notification created')
-      }
-    } catch (error) {
-      console.error('Error creating test notification:', error)
-    }
-  }
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

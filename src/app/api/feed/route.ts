@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       .from('posts')
       .select(`
         *,
-        user:users(id, username, avatar_url)
+        users!posts_user_id_fkey(id, username, avatar_url)
       `)
       .or(`user_id.eq.${user.id},user_id.in.(select following_id from follows where follower_id = '${user.id}')`)
       .order('created_at', { ascending: false })

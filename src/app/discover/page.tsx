@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabaseClient'
 import { User } from '@supabase/supabase-js'
-import { Search, Users, Sparkles } from 'lucide-react'
+import { Search, Users } from 'lucide-react'
 import Link from 'next/link'
 
 interface UserProfile {

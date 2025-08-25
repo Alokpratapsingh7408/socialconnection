@@ -38,6 +38,7 @@ export interface Post {
   users?: {
     id: string
     username: string
+    avatar_url?: string
   }
 }
 

@@ -4,9 +4,8 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { 
   Image as ImageIcon, 
   Smile,
@@ -64,7 +63,7 @@ export function CreatePostForm({ onSubmit, isLoading = false }: CreatePostFormPr
       setCategory('general')
       setImageUrl('')
       setShowImageInput(false)
-    } catch (error) {
+    } catch {
       setError('Failed to create post. Please try again.')
     } finally {
       setLocalLoading(false)
@@ -160,6 +159,7 @@ export function CreatePostForm({ onSubmit, isLoading = false }: CreatePostFormPr
               {/* Image Preview */}
               {imageUrl && !error && (
                 <div className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={imageUrl}
                     alt="Preview"

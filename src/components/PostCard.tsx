@@ -121,15 +121,15 @@ export function PostCard({
       <div className="flex items-center justify-between p-4 pb-3">
         <div className="flex items-center space-x-3">
           <Avatar className="h-12 w-12 ring-2 ring-offset-2 ring-gray-100">
-            <AvatarImage src={post.user?.avatar_url} className="object-cover" />
+            <AvatarImage src={post.users?.avatar_url} className="object-cover" />
             <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
-              {post.user?.username?.charAt(0).toUpperCase() || 'U'}
+              {post.users?.username?.charAt(0).toUpperCase() || 'U'}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1">
             <div className="flex items-center space-x-2">
               <h3 className="font-semibold text-gray-900 text-sm">
-                {post.user?.username}
+                {post.users?.username || 'Unknown User'}
               </h3>
               <Badge className={`text-xs px-2 py-1 rounded-full border ${categoryColors[post.category]}`}>
                 {post.category}
