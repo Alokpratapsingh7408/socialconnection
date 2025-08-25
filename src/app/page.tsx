@@ -32,6 +32,7 @@ export default function Home() {
   const [posts, setPosts] = useState<Post[]>([])
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(false)
+  const [isAuthLoading, setIsAuthLoading] = useState(true) // Add auth loading state
   const [authStep, setAuthStep] = useState<AuthStep>('login')
   const [authMessage, setAuthMessage] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
@@ -51,6 +52,7 @@ export default function Home() {
       if (response.ok) {
         const data = await response.json()
         setUserProfile(data.profile || data) // Handle different API response formats
+        console.log('User profile loaded for:', userId)
       }
     } catch (error) {
       console.error('Error fetching user profile:', error)
@@ -60,10 +62,16 @@ export default function Home() {
   useEffect(() => {
     // Check for existing session
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        setUser(session.user)
-        await fetchUserProfile(session.user.id)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          setUser(session.user)
+          await fetchUserProfile(session.user.id)
+        }
+      } catch (error) {
+        console.error('Error checking session:', error)
+      } finally {
+        setIsAuthLoading(false) // Set loading to false after auth check
       }
     }
     
@@ -82,12 +90,14 @@ export default function Home() {
           await fetchUserProfile(session.user.id)
           await fetchPosts()
           await fetchLikedPosts(session.user.id)
+          setIsAuthLoading(false)
         } else if (event === 'SIGNED_OUT') {
           setUser(null)
           setUserProfile(null)
           setPosts([])
           setLikedPosts(new Set())
           setAuthStep('login')
+          setIsAuthLoading(false)
         }
       }
     )
@@ -456,6 +466,26 @@ export default function Home() {
             )}
           </CardContent>
         </Card>
+      </div>
+    )
+  }
+
+  // Show loading screen while checking authentication
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center mx-auto animate-pulse">
+            <svg className="w-6 h-6 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            SocialConnect
+          </h1>
+          <p className="text-gray-600">Loading your experience...</p>
+        </div>
       </div>
     )
   }
