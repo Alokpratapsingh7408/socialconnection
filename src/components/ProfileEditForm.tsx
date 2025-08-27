@@ -5,6 +5,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { ImageUpload } from '@/components/ImageUpload'
+import { uploadImage } from '@/lib/imageUpload'
 import { AlertCircle, X } from 'lucide-react'
 import { User } from '@/lib/supabaseClient'
 
@@ -38,6 +40,9 @@ export function ProfileEditForm({
   })
   const [errors, setErrors] = useState<Partial<ProfileEditData>>({})
   const [localLoading, setLocalLoading] = useState(false)
+  const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
   const validateForm = useCallback(() => {
     const newErrors: Partial<ProfileEditData> = {}
@@ -112,14 +117,49 @@ export function ProfileEditForm({
     console.log('Starting profile update...')
     setLocalLoading(true)
     try {
-      console.log('Calling onSubmit with data:', formData)
-      await onSubmit(formData)
+      let finalAvatarUrl = formData.avatar_url
+
+      // Upload avatar if a new file is selected
+      if (selectedAvatarFile) {
+        console.log('Uploading new avatar...')
+        setUploadingAvatar(true)
+        const uploadResult = await uploadImage(selectedAvatarFile, 'avatars', user.id)
+        if (uploadResult.error) {
+          setErrors(prev => ({ ...prev, avatar_url: uploadResult.error || undefined }))
+          setUploadingAvatar(false)
+          setLocalLoading(false)
+          return
+        }
+        finalAvatarUrl = uploadResult.url || ''
+        setUploadingAvatar(false)
+      }
+
+      const updatedFormData = {
+        ...formData,
+        avatar_url: finalAvatarUrl
+      }
+
+      console.log('Calling onSubmit with data:', updatedFormData)
+      await onSubmit(updatedFormData)
       console.log('Profile update completed successfully!')
     } catch (error) {
       console.error('Error updating profile:', error)
     } finally {
       setLocalLoading(false)
+      setUploadingAvatar(false)
     }
+  }
+
+  const handleAvatarSelect = (file: File | null) => {
+    setSelectedAvatarFile(file)
+    // Clear avatar_url error when new file is selected
+    if (file && errors.avatar_url) {
+      setErrors(prev => ({ ...prev, avatar_url: undefined }))
+    }
+  }
+
+  const handleAvatarPreview = (previewUrl: string | null) => {
+    setAvatarPreview(previewUrl)
   }
 
   const handleInputChange = (field: keyof ProfileEditData, value: string) => {
@@ -152,35 +192,31 @@ export function ProfileEditForm({
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Avatar Section */}
           <div className="flex flex-col items-center space-y-6 py-6 bg-gradient-to-br from-gray-50 to-white rounded-3xl">
-            <div className="relative group">
-              <Avatar className="h-32 w-32 ring-4 ring-white shadow-2xl transition-transform group-hover:scale-105">
-                <AvatarImage src={formData.avatar_url} className="object-cover" />
-                <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                  {formData.username?.charAt(0).toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-            </div>
+            <ImageUpload
+              onImageSelect={handleAvatarSelect}
+              onImagePreview={handleAvatarPreview}
+              currentImageUrl={formData.avatar_url}
+              disabled={uploadingAvatar || isLoading || localLoading}
+              variant="avatar"
+            />
 
-            {/* Avatar URL Input */}
-            <div className="w-full max-w-md">
-              <Label htmlFor="avatar_url" className="text-lg font-semibold text-gray-700">Avatar URL</Label>
-              <Input
-                id="avatar_url"
-                type="url"
-                value={formData.avatar_url}
-                onChange={(e) => handleInputChange('avatar_url', e.target.value)}
-                placeholder="https://example.com/avatar.jpg"
-                className={`mt-2 rounded-2xl border-2 py-3 px-4 text-lg transition-all focus:ring-4 focus:ring-blue-100 ${
-                  errors.avatar_url ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
-                }`}
-              />
-              {errors.avatar_url && (
-                <div className="flex items-center space-x-2 text-red-500 text-sm mt-2 bg-red-50 p-3 rounded-xl">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>{errors.avatar_url}</span>
-                </div>
-              )}
-            </div>
+            {uploadingAvatar && (
+              <div className="flex items-center space-x-2 text-blue-600 bg-blue-50 p-3 rounded-xl">
+                <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm font-medium">Uploading avatar...</span>
+              </div>
+            )}
+
+            {errors.avatar_url && (
+              <div className="flex items-center space-x-2 text-red-500 text-sm bg-red-50 p-3 rounded-xl">
+                <AlertCircle className="h-4 w-4" />
+                <span>{errors.avatar_url}</span>
+              </div>
+            )}
+
+            <p className="text-sm text-gray-500 text-center max-w-md">
+              Click on your avatar to upload a new image. Supported formats: JPEG, PNG, GIF, WebP (Max 5MB)
+            </p>
           </div>
 
           {/* Username */}
@@ -280,7 +316,7 @@ export function ProfileEditForm({
             </Button>
             <Button
               type="submit"
-              disabled={isLoading || localLoading || Object.keys(errors).length > 0}
+              disabled={isLoading || localLoading || uploadingAvatar || Object.keys(errors).length > 0}
               onClick={() => console.log('Save button clicked! Errors count:', Object.keys(errors).length)}
               className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
@@ -288,6 +324,11 @@ export function ProfileEditForm({
                 <div className="flex items-center justify-center space-x-3">
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   <span>Saving...</span>
+                </div>
+              ) : uploadingAvatar ? (
+                <div className="flex items-center justify-center space-x-3">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Uploading...</span>
                 </div>
               ) : (
                 'Save Changes'

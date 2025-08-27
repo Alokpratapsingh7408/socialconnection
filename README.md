@@ -2,6 +2,21 @@
 
 🚀 **SocialConnect** is a modern social media web application built with Next.js, TypeScript, Supabase, and Tailwind CSS. It features user authentication, posts, likes, comments, follows, real-time notifications, and an admin panel.
 
+## 🎨 Branding & Assets
+
+### Favicon & Icons
+The application features a custom-designed favicon that represents social connection through connected nodes:
+- **SVG Favicon**: Modern scalable icon with gradient design
+- **PNG Fallbacks**: Multiple sizes (16x16, 32x32, 180x180, 192x192, 512x512)  
+- **Safari Support**: Monochrome Safari pinned tab icon
+- **Web App Manifest**: PWA-ready configuration
+- **Open Graph**: Social media sharing image (1200x630)
+
+### Brand Colors
+- **Primary Gradient**: Purple to Pink (#667eea → #764ba2)
+- **Theme Color**: #667eea
+- **Background**: #ffffff
+
 ## 🎯 Features
 
 ### Core Functionality

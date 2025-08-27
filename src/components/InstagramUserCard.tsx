@@ -121,11 +121,11 @@ export function InstagramUserCard({
                 {/* Stats */}
                 {showStats && (
                   <div className="flex items-center space-x-6 text-sm">
-                    <div className="flex items-center space-x-1 text-gray-600 hover:text-gray-900 transition-colors">
+                    {/* <div className="flex items-center space-x-1 text-gray-600 hover:text-gray-900 transition-colors">
                       <MessageCircle className="h-4 w-4" />
                       <span className="font-semibold">{user.posts_count}</span>
                       <span>posts</span>
-                    </div>
+                    </div> */}
                     <div className="flex items-center space-x-1 text-gray-600 hover:text-gray-900 transition-colors">
                       <Users className="h-4 w-4" />
                       <span className="font-semibold">{user.followers_count}</span>

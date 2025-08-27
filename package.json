@@ -1,7 +1,10 @@
 {
-  "name": "socialconnection",
-  "version": "0.1.0",
+  "name": "socialconnect",
+  "version": "1.0.0",
   "private": true,
+  "description": "A modern social media platform for connecting people, sharing moments, and building communities",
+  "author": "SocialConnect Team",
+  "keywords": ["social media", "social network", "nextjs", "react", "supabase", "typescript"],
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",

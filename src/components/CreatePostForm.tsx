@@ -1,16 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { ImageUpload } from '@/components/ImageUpload'
+import { uploadImage } from '@/lib/imageUpload'
+import { supabase } from '@/lib/supabaseClient'
 import { 
   Image as ImageIcon, 
   Smile,
   MapPin,
-  X,
   Send
 } from 'lucide-react'
 
@@ -28,46 +29,81 @@ interface CreatePostData {
 export function CreatePostForm({ onSubmit, isLoading = false }: CreatePostFormProps) {
   const [content, setContent] = useState('')
   const [category, setCategory] = useState<CreatePostData['category']>('general')
-  const [imageUrl, setImageUrl] = useState('')
-  const [showImageInput, setShowImageInput] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [showImageUpload, setShowImageUpload] = useState(false)
   const [localLoading, setLocalLoading] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+
+  // Get current user
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setCurrentUserId(user?.id || null)
+    }
+    getCurrentUser()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!content.trim()) return
-    
-    // Validate image URL if provided
-    if (imageUrl.trim()) {
-      try {
-        new URL(imageUrl.trim())
-      } catch {
-        setError('Please enter a valid image URL')
-        return
-      }
+    if (!currentUserId) {
+      setError('Please log in to create a post')
+      return
     }
     
     setLocalLoading(true)
     setError(null)
     
     try {
+      let imageUrl: string | undefined
+
+      // Upload image if selected
+      if (selectedFile) {
+        setUploadingImage(true)
+        const uploadResult = await uploadImage(selectedFile, 'posts', currentUserId)
+        if (uploadResult.error) {
+          setError(uploadResult.error)
+          setUploadingImage(false)
+          setLocalLoading(false)
+          return
+        }
+        imageUrl = uploadResult.url || undefined
+        setUploadingImage(false)
+      }
+      
       await onSubmit({
         content: content.trim(),
         category,
-        image_url: imageUrl.trim() || undefined,
+        image_url: imageUrl,
       })
       
       // Reset form
       setContent('')
       setCategory('general')
-      setImageUrl('')
-      setShowImageInput(false)
+      setSelectedFile(null)
+      setImagePreview(null)
+      setShowImageUpload(false)
     } catch {
       setError('Failed to create post. Please try again.')
     } finally {
       setLocalLoading(false)
+      setUploadingImage(false)
     }
+  }
+
+  const handleImageSelect = (file: File | null) => {
+    setSelectedFile(file)
+    if (!file && showImageUpload) {
+      setShowImageUpload(false)
+    }
+  }
+
+  const handleImagePreview = (previewUrl: string | null) => {
+    setImagePreview(previewUrl)
   }
 
   const categoryOptions = [
@@ -78,6 +114,7 @@ export function CreatePostForm({ onSubmit, isLoading = false }: CreatePostFormPr
 
   const characterLimit = 280
   const charactersLeft = characterLimit - content.length
+  const isFormValid = content.trim() && charactersLeft >= 0 && !uploadingImage
 
   return (
     <Card className="w-full bg-white border-0 shadow-sm hover:shadow-md transition-shadow duration-300 rounded-3xl overflow-hidden">
@@ -126,46 +163,28 @@ export function CreatePostForm({ onSubmit, isLoading = false }: CreatePostFormPr
                 ))}
               </div>
 
-              {/* Image URL Input */}
-              {showImageInput && (
+              {/* Image Upload */}
+              {showImageUpload && (
                 <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      type="url"
-                      value={imageUrl}
-                      onChange={(e) => setImageUrl(e.target.value)}
-                      placeholder="Enter image URL..."
-                      className="flex-1 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setShowImageInput(false)
-                        setImageUrl('')
-                      }}
-                      className="text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full w-8 h-8 p-0"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  {error && (
-                    <p className="text-red-500 text-xs">{error}</p>
+                  <ImageUpload
+                    onImageSelect={handleImageSelect}
+                    onImagePreview={handleImagePreview}
+                    disabled={uploadingImage || isLoading || localLoading}
+                    variant="post"
+                  />
+                  {uploadingImage && (
+                    <div className="flex items-center space-x-2 text-blue-600 bg-blue-50 p-3 rounded-xl">
+                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-sm font-medium">Uploading image...</span>
+                    </div>
                   )}
                 </div>
               )}
 
-              {/* Image Preview */}
-              {imageUrl && !error && (
-                <div className="relative">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={imageUrl}
-                    alt="Preview"
-                    className="w-full max-h-64 object-cover rounded-2xl border border-gray-200"
-                    onError={() => setError('Invalid image URL')}
-                  />
+              {/* Error Message */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <p className="text-red-600 text-sm font-medium">{error}</p>
                 </div>
               )}
             </div>
@@ -178,8 +197,13 @@ export function CreatePostForm({ onSubmit, isLoading = false }: CreatePostFormPr
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => setShowImageInput(!showImageInput)}
-                className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-full p-2"
+                onClick={() => setShowImageUpload(!showImageUpload)}
+                disabled={uploadingImage || isLoading || localLoading}
+                className={`rounded-full p-2 ${
+                  showImageUpload || selectedFile
+                    ? 'text-blue-600 bg-blue-100'
+                    : 'text-blue-500 hover:text-blue-600 hover:bg-blue-50'
+                }`}
               >
                 <ImageIcon className="h-5 w-5" />
               </Button>
@@ -188,6 +212,7 @@ export function CreatePostForm({ onSubmit, isLoading = false }: CreatePostFormPr
                 variant="ghost"
                 size="sm"
                 className="text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50 rounded-full p-2"
+                disabled={uploadingImage || isLoading || localLoading}
               >
                 <Smile className="h-5 w-5" />
               </Button>
@@ -196,6 +221,7 @@ export function CreatePostForm({ onSubmit, isLoading = false }: CreatePostFormPr
                 variant="ghost"
                 size="sm"
                 className="text-green-500 hover:text-green-600 hover:bg-green-50 rounded-full p-2"
+                disabled={uploadingImage || isLoading || localLoading}
               >
                 <MapPin className="h-5 w-5" />
               </Button>
@@ -203,13 +229,18 @@ export function CreatePostForm({ onSubmit, isLoading = false }: CreatePostFormPr
 
             <Button
               type="submit"
-              disabled={!content.trim() || isLoading || localLoading || charactersLeft < 0}
+              disabled={!isFormValid || isLoading || localLoading}
               className="bg-blue-500 hover:bg-blue-600 text-white rounded-full px-6 py-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isLoading || localLoading ? (
                 <div className="flex items-center space-x-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   <span>Posting...</span>
+                </div>
+              ) : uploadingImage ? (
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Uploading...</span>
                 </div>
               ) : (
                 <div className="flex items-center space-x-2">

@@ -14,6 +14,16 @@ VALUES (
   ARRAY['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 ) ON CONFLICT (id) DO NOTHING;
 
+-- Create Storage Bucket for Post Images
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'posts',
+  'posts',
+  true,
+  5242880, -- 5MB limit
+  ARRAY['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+) ON CONFLICT (id) DO NOTHING;
+
 -- Set up Storage Policies for Avatars Bucket
 CREATE POLICY "Avatar uploads are publicly accessible" ON storage.objects
   FOR SELECT USING (bucket_id = 'avatars');
@@ -26,6 +36,19 @@ CREATE POLICY "Users can update their own avatars" ON storage.objects
 
 CREATE POLICY "Users can delete their own avatars" ON storage.objects
   FOR DELETE USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- Set up Storage Policies for Posts Bucket
+CREATE POLICY "Post images are publicly accessible" ON storage.objects
+  FOR SELECT USING (bucket_id = 'posts');
+
+CREATE POLICY "Users can upload their own post images" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'posts' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "Users can update their own post images" ON storage.objects
+  FOR UPDATE USING (bucket_id = 'posts' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "Users can delete their own post images" ON storage.objects
+  FOR DELETE USING (bucket_id = 'posts' AND auth.uid()::text = (storage.foldername(name))[1]);
 
 -- Users table (extends Supabase auth.users)
 CREATE TABLE IF NOT EXISTS users (
@@ -266,28 +289,4 @@ CREATE POLICY "System can create notifications" ON notifications
 CREATE POLICY "Users can update their own notifications" ON notifications
   FOR UPDATE USING (auth.uid() = user_id);
 
--- Create storage bucket for user avatars and post images
-INSERT INTO storage.buckets (id, name, public) VALUES ('avatars', 'avatars', true);
-INSERT INTO storage.buckets (id, name, public) VALUES ('posts', 'posts', true);
-
--- Storage policies
-CREATE POLICY "Avatar images are publicly accessible" ON storage.objects
-  FOR SELECT USING (bucket_id = 'avatars');
-
-CREATE POLICY "Users can upload their own avatar" ON storage.objects
-  FOR INSERT WITH CHECK (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
-
-CREATE POLICY "Users can update their own avatar" ON storage.objects
-  FOR UPDATE USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
-
-CREATE POLICY "Users can delete their own avatar" ON storage.objects
-  FOR DELETE USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
-
-CREATE POLICY "Post images are publicly accessible" ON storage.objects
-  FOR SELECT USING (bucket_id = 'posts');
-
-CREATE POLICY "Users can upload post images" ON storage.objects
-  FOR INSERT WITH CHECK (bucket_id = 'posts' AND auth.uid()::text = (storage.foldername(name))[1]);
-
-CREATE POLICY "Users can delete their own post images" ON storage.objects
-  FOR DELETE USING (bucket_id = 'posts' AND auth.uid()::text = (storage.foldername(name))[1]);
+-- Additional storage policies are handled above in the main storage section
