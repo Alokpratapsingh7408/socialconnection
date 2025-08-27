@@ -1,0 +1,106 @@
+/* animations.css */
+.animate-like {
+  animation: like-animation 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes like-animation {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.btn-feedback {
+  position: relative;
+  overflow: hidden;
+  transform: translate3d(0, 0, 0);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-feedback:active {
+  transform: scale(0.95);
+}
+
+.ripple-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+  transform: scale(0);
+  animation: ripple 0.6s linear;
+  pointer-events: none;
+}
+
+@keyframes ripple {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+.like-button {
+  transition: transform 0.2s ease;
+}
+
+.like-button:active {
+  transform: scale(0.9);
+}
+
+.like-button.liked {
+  animation: pop 0.3s ease;
+}
+
+@keyframes pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* Optimized loading animations */
+.loading-skeleton {
+  background: linear-gradient(90deg,
+    rgba(0, 0, 0, 0.06) 25%,
+    rgba(0, 0, 0, 0.08) 37%,
+    rgba(0, 0, 0, 0.06) 63%
+  );
+  background-size: 400% 100%;
+  animation: loading 1.4s ease infinite;
+}
+
+@keyframes loading {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+/* Smooth transitions */
+.transition-smooth {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Interactive feedback */
+.interactive:active {
+  transform: scale(0.98);
+}
+
+/* Modern card hover effect */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+/* Button press effect */
+.press-effect {
+  transform: translateY(0);
+  transition: transform 0.1s ease;
+}
+
+.press-effect:active {
+  transform: translateY(2px);
+}

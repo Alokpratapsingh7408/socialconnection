@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "../styles/animations.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -118,5 +119,55 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Interactive animations */
+@layer utilities {
+  .animate-like {
+    animation: like-animation 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes like-animation {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+  }
+
+  .btn-feedback {
+    @apply relative overflow-hidden transform transition-all duration-200;
+  }
+
+  .btn-feedback:active {
+    @apply scale-95;
+  }
+
+  .btn-feedback::before {
+    content: '';
+    @apply absolute top-1/2 left-1/2 w-0 h-0 bg-white/20 rounded-full -translate-x-1/2 -translate-y-1/2 transition-all duration-300;
+  }
+
+  .btn-feedback:active::before {
+    @apply w-[200%] h-[200%];
+  }
+}
+
+/* Loading animations */
+@layer components {
+  .loading-skeleton {
+    @apply animate-pulse bg-gray-200;
+  }
+
+  .ripple {
+    @apply absolute rounded-full transform scale-0;
+    animation: ripple 600ms linear;
+    background-color: rgba(255, 255, 255, 0.7);
+  }
+
+  @keyframes ripple {
+    to {
+      transform: scale(4);
+      opacity: 0;
+    }
   }
 }

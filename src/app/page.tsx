@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Feed } from '@/components/Feed'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import debounce from 'lodash/debounce'
+import { ModernFeed } from '@/components/ModernFeed'
 import { AuthForm } from '@/components/AuthForm'
 import { EditPostForm } from '@/components/EditPostForm'
 import { NotificationBell } from '@/components/NotificationBell'
@@ -28,11 +29,39 @@ type AuthStep = 'login' | 'register' | 'verify-email' | 'check-email'
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null)
-  const [userProfile, setUserProfile] = useState<DBUser | null>(null) // Full profile data with username, bio, etc.
+  const [userProfile, setUserProfile] = useState<DBUser | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(false)
-  const [isAuthLoading, setIsAuthLoading] = useState(true) // Add auth loading state
+  const [isAuthLoading, setIsAuthLoading] = useState(true)
+  // Removed unused updateQueue state
+  
+  // Throttle post updates to prevent excessive re-renders
+  const throttledSetPosts = useMemo(
+    () => 
+      debounce((updateFn: (prev: Post[]) => Post[]) => {
+        setPosts(prev => {
+          const newPosts = updateFn(prev);
+          return newPosts;
+        });
+      }, 100), // 100ms debounce time
+    []
+  );
+
+  // Cleanup debounced function
+  useEffect(() => {
+    return () => {
+      throttledSetPosts.cancel();
+    };
+  }, [throttledSetPosts]);
+
+  // Cleanup the debounced function on unmount
+  useEffect(() => {
+    return () => {
+      throttledSetPosts.cancel();
+    };
+  }, [throttledSetPosts]);
+
   const [authStep, setAuthStep] = useState<AuthStep>('login')
   const [authMessage, setAuthMessage] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
@@ -286,8 +315,25 @@ export default function Home() {
 
     try {
       const isLiked = likedPosts.has(postId)
-      const { data: { session } } = await supabase.auth.getSession()
       
+      // Optimistically update UI immediately
+      const newLikedPosts = new Set(likedPosts)
+      if (isLiked) {
+        newLikedPosts.delete(postId)
+      } else {
+        newLikedPosts.add(postId)
+      }
+      setLikedPosts(newLikedPosts)
+      
+      // Update post like count with throttling
+      throttledSetPosts(prev => prev.map(post => 
+        post.id === postId 
+          ? { ...post, like_count: post.like_count + (isLiked ? -1 : 1) }
+          : post
+      ))
+
+      // Then make API call
+      const { data: { session } } = await supabase.auth.getSession()
       const response = await fetch(`/api/posts/${postId}/like`, {
         method: isLiked ? 'DELETE' : 'POST',
         headers: {
@@ -295,20 +341,19 @@ export default function Home() {
         },
       })
 
-      if (response.ok) {
-        // Update local state optimistically
-        const newLikedPosts = new Set(likedPosts)
+      if (!response.ok) {
+        // Revert changes if API call fails
+        const revertedLikedPosts = new Set(likedPosts)
         if (isLiked) {
-          newLikedPosts.delete(postId)
+          revertedLikedPosts.add(postId)
         } else {
-          newLikedPosts.add(postId)
+          revertedLikedPosts.delete(postId)
         }
-        setLikedPosts(newLikedPosts)
+        setLikedPosts(revertedLikedPosts)
         
-        // Update post like count
-        setPosts(prev => prev.map(post => 
+        throttledSetPosts(prev => prev.map(post => 
           post.id === postId 
-            ? { ...post, like_count: post.like_count + (isLiked ? -1 : 1) }
+            ? { ...post, like_count: post.like_count + (isLiked ? 1 : -1) }
             : post
         ))
       }
@@ -793,7 +838,7 @@ export default function Home() {
         )}
         
         <div className="px-4 md:px-0">
-          <Feed
+          <ModernFeed
             posts={posts}
             currentUserId={user?.id !== 'guest' ? user?.id : undefined}
             onCreatePost={handleCreatePost}
