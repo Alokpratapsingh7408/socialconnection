@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { ProfileCard } from '@/components/ProfileCard'
-import { Feed } from '@/components/Feed'
+import { ModernFeed } from '@/components/ModernFeed'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import { supabase, User, Post } from '@/lib/supabaseClient'
@@ -269,6 +269,40 @@ export default function UserProfile() {
     }
   }
 
+  const handleComment = async (postId: string, content: string) => {
+    if (!currentUser) return null
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        console.error('No access token available')
+        return null
+      }
+
+      const response = await fetch(`/api/posts/${postId}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ content }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to add comment')
+      }
+
+      const data = await response.json()
+      // Reload posts to update comment count
+      await fetchUserPosts()
+      return data.comment
+    } catch (error) {
+      console.error('Error adding comment:', error)
+      throw error
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -338,12 +372,16 @@ export default function UserProfile() {
                 </h2>
               </div>
               {posts.length > 0 ? (
-                <Feed
+                <ModernFeed
                   posts={posts}
                   currentUserId={currentUser?.id || currentUserId || undefined}
+                  currentUser={currentUser ? {
+                    username: currentUser.username,
+                    avatar_url: currentUser.avatar_url
+                  } : undefined}
                   onCreatePost={async () => {}} // Not used on profile pages - async empty function
                   onLike={handleLike}
-                  onComment={async () => {}} // Also fix this one to be async
+                  onComment={handleComment}
                   onEditPost={() => {}}
                   onDeletePost={async () => {}} // Fix this one too
                   likedPosts={likedPosts}

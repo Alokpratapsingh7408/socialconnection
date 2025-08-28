@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -55,6 +56,7 @@ export function PostCard({
   onDelete,
   isLiked = false,
 }: PostCardProps) {
+  const router = useRouter()
   const [imageError, setImageError] = useState(false)
   const [showComments, setShowComments] = useState(false)
   const [comments, setComments] = useState<Comment[]>([])
@@ -62,6 +64,13 @@ export function PostCard({
   const [loadingComments, setLoadingComments] = useState(false)
   const [submittingComment, setSubmittingComment] = useState(false)
   const isOwner = currentUserId === post.user_id
+
+  // Navigation handler for user profile
+  const handleUserClick = (userId: string) => {
+    if (userId && userId !== 'guest') {
+      router.push(`/users/${userId}`)
+    }
+  }
 
   const categoryColors = {
     general: 'bg-blue-100 text-blue-700 border-blue-200',
@@ -158,7 +167,10 @@ export function PostCard({
       {/* Header */}
       <div className="flex items-center justify-between p-4 pb-3">
         <div className="flex items-center space-x-3">
-          <Avatar className="h-12 w-12 ring-2 ring-offset-2 ring-gray-100">
+          <Avatar 
+            className="h-12 w-12 ring-2 ring-offset-2 ring-gray-100 cursor-pointer hover:ring-blue-300 transition-all duration-200"
+            onClick={() => handleUserClick(post.user_id)}
+          >
             <AvatarImage src={post.users?.avatar_url} className="object-cover" />
             <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
               {post.users?.username?.charAt(0).toUpperCase() || 'U'}
@@ -166,7 +178,10 @@ export function PostCard({
           </Avatar>
           <div className="flex-1">
             <div className="flex items-center space-x-2">
-              <h3 className="font-semibold text-gray-900 text-sm">
+              <h3 
+                className="font-semibold text-gray-900 text-sm cursor-pointer hover:text-blue-600 transition-colors duration-200"
+                onClick={() => handleUserClick(post.user_id)}
+              >
                 {post.users?.username}
               </h3>
               <Badge className={`text-xs px-2 py-1 rounded-full border ${categoryColors[post.category]}`}>
@@ -317,7 +332,10 @@ export function PostCard({
               <div className="space-y-3 max-h-64 overflow-y-auto">
                 {comments.map((comment) => (
                   <div key={comment.id} className="flex space-x-3">
-                    <Avatar className="h-8 w-8">
+                    <Avatar 
+                      className="h-8 w-8 cursor-pointer hover:ring-2 hover:ring-blue-300 hover:ring-offset-1 transition-all duration-200"
+                      onClick={() => handleUserClick(comment.user_id)}
+                    >
                       <AvatarImage src={comment.user?.avatar_url} />
                       <AvatarFallback className="bg-gray-200 text-gray-600 text-xs">
                         {comment.user?.username?.charAt(0).toUpperCase() || 'U'}
@@ -325,7 +343,10 @@ export function PostCard({
                     </Avatar>
                     <div className="flex-1">
                       <div className="bg-gray-50 rounded-2xl px-3 py-2">
-                        <p className="font-semibold text-sm text-gray-900">
+                        <p 
+                          className="font-semibold text-sm text-gray-900 cursor-pointer hover:text-blue-600 transition-colors duration-200 inline"
+                          onClick={() => handleUserClick(comment.user_id)}
+                        >
                           {comment.user?.username}
                         </p>
                         <p className="text-sm text-gray-800">{comment.content}</p>
