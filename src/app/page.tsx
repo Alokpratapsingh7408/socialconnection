@@ -674,6 +674,10 @@ export default function Home() {
           <ModernFeed
             posts={posts}
             currentUserId={user?.id !== 'guest' ? user?.id : undefined}
+            currentUser={userProfile ? {
+              username: userProfile.username,
+              avatar_url: userProfile.avatar_url
+            } : undefined}
             onCreatePost={handleCreatePost}
             onLike={handleLike}
             onComment={handleComment}
@@ -687,35 +691,6 @@ export default function Home() {
       </main>
 
       <MobileNav user={user} />
-
-      {/* Main Content */}
-      <main className="max-w-6xl mx-auto py-8 pb-24 md:pb-8">
-        {editingPost && (
-          <div className="mb-6 px-4">
-            <EditPostForm
-              post={editingPost}
-              onSubmit={handleUpdatePost}
-              onCancel={handleCancelEdit}
-              isLoading={isLoading}
-            />
-          </div>
-        )}
-        
-        <div className="px-4 md:px-0">
-          <ModernFeed
-            posts={posts}
-            currentUserId={user?.id !== 'guest' ? user?.id : undefined}
-            onCreatePost={handleCreatePost}
-            onLike={handleLike}
-            onComment={handleComment}
-            onEditPost={handleEditPost}
-            onDeletePost={handleDeletePost}
-            likedPosts={likedPosts}
-            isLoading={false}
-            showCreateForm={!!(user && user.id !== 'guest') && !editingPost}
-          />
-        </div>
-      </main>
     </div>
   )
 }
