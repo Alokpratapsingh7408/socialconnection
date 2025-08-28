@@ -364,14 +364,14 @@ export default function Home() {
   }
 
   const handleComment = async (postId: string, content: string) => {
-    if (!user) return
-
+    if (!user) return null
+    
     try {
       // Get the current session to get the access token
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) {
         console.error('No access token available')
-        return
+        return null
       }
 
       const response = await fetch(`/api/posts/${postId}/comments`, {
@@ -388,10 +388,13 @@ export default function Home() {
         throw new Error(errorData.error || 'Failed to add comment')
       }
 
+      const data = await response.json()
       // Reload posts to update comment count
       await fetchPosts()
+      return data.comment
     } catch (error) {
       console.error('Error adding comment:', error)
+      throw error
     }
   }
 

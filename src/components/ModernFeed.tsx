@@ -5,6 +5,17 @@ import { PostCard } from './ModernPostCard'
 import { CreatePostForm } from './CreatePostForm'
 import type { Post } from '@/lib/supabaseClient'
 
+interface Comment {
+  id: string
+  content: string
+  user_id: string
+  created_at: string
+  user?: {
+    username: string
+    avatar_url?: string
+  }
+}
+
 interface CreatePostData {
   content: string
   category: 'general' | 'announcement' | 'question'
@@ -14,9 +25,13 @@ interface CreatePostData {
 interface FeedProps {
   posts: Post[]
   currentUserId?: string
+  currentUser?: {
+    username: string
+    avatar_url?: string
+  }
   onCreatePost: (data: CreatePostData) => Promise<void>
   onLike: (postId: string) => void
-  onComment: (postId: string, content: string) => void
+  onComment: (postId: string, content: string) => Promise<Comment | null>
   onEditPost: (post: Post) => void
   onDeletePost: (postId: string) => void
   likedPosts: Set<string>
@@ -27,6 +42,7 @@ interface FeedProps {
 export const ModernFeed = memo(function ModernFeed({
   posts,
   currentUserId,
+  currentUser,
   onCreatePost,
   onLike,
   onComment,
@@ -46,7 +62,7 @@ export const ModernFeed = memo(function ModernFeed({
   }, [onLike]);
 
   const handleComment = useCallback((postId: string, content: string) => {
-    onComment(postId, content);
+    return onComment(postId, content);
   }, [onComment]);
 
   const handleEdit = useCallback((post: Post) => {
@@ -84,6 +100,7 @@ export const ModernFeed = memo(function ModernFeed({
               <PostCard
                 post={post}
                 currentUserId={currentUserId}
+                currentUser={currentUser}
                 onLike={handleLike}
                 onComment={handleComment}
                 onEdit={handleEdit}

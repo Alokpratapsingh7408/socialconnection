@@ -30,7 +30,6 @@ export function CreatePostForm({ onSubmit, isLoading = false }: CreatePostFormPr
   const [content, setContent] = useState('')
   const [category, setCategory] = useState<CreatePostData['category']>('general')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [showImageUpload, setShowImageUpload] = useState(false)
   const [localLoading, setLocalLoading] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -85,7 +84,6 @@ export function CreatePostForm({ onSubmit, isLoading = false }: CreatePostFormPr
       setContent('')
       setCategory('general')
       setSelectedFile(null)
-      setImagePreview(null)
       setShowImageUpload(false)
     } catch {
       setError('Failed to create post. Please try again.')
@@ -100,10 +98,6 @@ export function CreatePostForm({ onSubmit, isLoading = false }: CreatePostFormPr
     if (!file && showImageUpload) {
       setShowImageUpload(false)
     }
-  }
-
-  const handleImagePreview = (previewUrl: string | null) => {
-    setImagePreview(previewUrl)
   }
 
   const categoryOptions = [
@@ -168,7 +162,6 @@ export function CreatePostForm({ onSubmit, isLoading = false }: CreatePostFormPr
                 <div className="space-y-2">
                   <ImageUpload
                     onImageSelect={handleImageSelect}
-                    onImagePreview={handleImagePreview}
                     disabled={uploadingImage || isLoading || localLoading}
                     variant="post"
                   />

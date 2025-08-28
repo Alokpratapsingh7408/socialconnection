@@ -34,8 +34,12 @@ interface Comment {
 interface PostCardProps {
   post: Post
   currentUserId?: string
+  currentUser?: {
+    username: string
+    avatar_url?: string
+  }
   onLike?: (postId: string) => void
-  onComment?: (postId: string, content: string) => void
+  onComment?: (postId: string, content: string) => Promise<Comment | null>
   onEdit?: (post: Post) => void
   onDelete?: (postId: string) => void
   isLiked?: boolean
@@ -44,6 +48,7 @@ interface PostCardProps {
 export function PostCard({
   post,
   currentUserId,
+  currentUser,
   onLike,
   onComment,
   onEdit,
@@ -101,15 +106,48 @@ export function PostCard({
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newComment.trim() || submittingComment) return
+    if (!newComment.trim() || submittingComment || !currentUserId) return
 
+    const commentContent = newComment.trim()
     setSubmittingComment(true)
+    
+    // Optimistically add the comment to local state for immediate UI update
+    const optimisticComment: Comment = {
+      id: `temp-${Date.now()}`, // Temporary ID
+      content: commentContent,
+      user_id: currentUserId,
+      created_at: new Date().toISOString(),
+      user: {
+        username: currentUser?.username || 'You',
+        avatar_url: currentUser?.avatar_url
+      }
+    }
+    
+    // Add the optimistic comment immediately
+    setComments(prevComments => [...prevComments, optimisticComment])
+    setNewComment('')
+
     try {
-      await onComment?.(post.id, newComment.trim())
-      setNewComment('')
-      await loadComments()
+      const newComment = await onComment?.(post.id, commentContent)
+      if (newComment) {
+        // Replace the optimistic comment with the real one
+        setComments(prevComments => 
+          prevComments.map(comment => 
+            comment.id === optimisticComment.id ? newComment : comment
+          )
+        )
+      } else {
+        // Fallback to reloading all comments if no comment returned
+        await loadComments()
+      }
     } catch (error) {
       console.error('Error submitting comment:', error)
+      // Remove the optimistic comment on error
+      setComments(prevComments => 
+        prevComments.filter(comment => comment.id !== optimisticComment.id)
+      )
+      // Restore the comment text
+      setNewComment(commentContent)
     } finally {
       setSubmittingComment(false)
     }

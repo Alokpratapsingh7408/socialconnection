@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useRef } from 'react'
 import useSWR from 'swr'
 import { Button } from '@/components/ui/button'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Bell, Heart, MessageCircle, UserPlus } from 'lucide-react'
-import { Notification as NotificationType, supabase } from '@/lib/supabaseClient'
+import { supabase } from '@/lib/supabaseClient'
 import { useInView } from 'react-intersection-observer'
 
 interface Actor {

@@ -4,7 +4,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ImageUpload } from '@/components/ImageUpload'
 import { uploadImage } from '@/lib/imageUpload'
 import { AlertCircle, X } from 'lucide-react'
@@ -41,7 +40,6 @@ export function ProfileEditForm({
   const [errors, setErrors] = useState<Partial<ProfileEditData>>({})
   const [localLoading, setLocalLoading] = useState(false)
   const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null)
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
   const validateForm = useCallback(() => {
@@ -158,10 +156,6 @@ export function ProfileEditForm({
     }
   }
 
-  const handleAvatarPreview = (previewUrl: string | null) => {
-    setAvatarPreview(previewUrl)
-  }
-
   const handleInputChange = (field: keyof ProfileEditData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
     if (errors[field]) {
@@ -194,7 +188,6 @@ export function ProfileEditForm({
           <div className="flex flex-col items-center space-y-6 py-6 bg-gradient-to-br from-gray-50 to-white rounded-3xl">
             <ImageUpload
               onImageSelect={handleAvatarSelect}
-              onImagePreview={handleAvatarPreview}
               currentImageUrl={formData.avatar_url}
               disabled={uploadingAvatar || isLoading || localLoading}
               variant="avatar"

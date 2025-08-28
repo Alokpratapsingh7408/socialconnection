@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { 
   Upload, 
   X, 
-  Loader2, 
-  Image as ImageIcon,
   Camera,
   FileImage
 } from 'lucide-react'
@@ -31,7 +30,6 @@ export function ImageUpload({
   variant = 'post',
   children
 }: ImageUploadProps) {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -54,7 +52,6 @@ export function ImageUpload({
     }
 
     if (!file) {
-      setSelectedFile(null)
       setError(null)
       onImageSelect(null)
       onImagePreview?.(null)
@@ -70,7 +67,6 @@ export function ImageUpload({
 
     // Create preview
     const preview = createImagePreview(file)
-    setSelectedFile(file)
     setPreviewUrl(preview)
     setError(null)
     onImageSelect(file)
@@ -135,10 +131,11 @@ export function ImageUpload({
           onDrop={handleDrop}
         >
           {hasImage ? (
-            <img
+            <Image
               src={displayUrl}
               alt="Avatar preview"
-              className="w-full h-full object-cover"
+              fill
+              className="object-cover"
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
@@ -208,11 +205,14 @@ export function ImageUpload({
         {hasImage ? (
           <div className="space-y-4">
             <div className="relative rounded-xl overflow-hidden">
-              <img
-                src={displayUrl}
-                alt="Upload preview"
-                className="w-full max-h-64 object-cover"
-              />
+              <div className="relative w-full h-64">
+                <Image
+                  src={displayUrl}
+                  alt="Upload preview"
+                  fill
+                  className="object-cover"
+                />
+              </div>
               {!disabled && (
                 <Button
                   type="button"

@@ -34,7 +34,6 @@ export default function DiscoverPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
-  const [followingUsers, setFollowingUsers] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     fetchCurrentUser()
@@ -116,9 +115,6 @@ export default function DiscoverPage() {
   const handleFollow = async (userId: string) => {
     if (!currentUser) return
 
-    // Optimistic update
-    setFollowingUsers(prev => new Set([...prev, userId]))
-
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const response = await fetch(`/api/users/${userId}/follow`, {
@@ -140,34 +136,14 @@ export default function DiscoverPage() {
             ? { ...user, isFollowing: true, followers_count: user.followers_count + 1 }
             : user
         ))
-      } else {
-        // Revert optimistic update on error
-        setFollowingUsers(prev => {
-          const newSet = new Set(prev)
-          newSet.delete(userId)
-          return newSet
-        })
       }
     } catch (error) {
       console.error('Error following user:', error)
-      // Revert optimistic update on error
-      setFollowingUsers(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(userId)
-        return newSet
-      })
     }
   }
 
   const handleUnfollow = async (userId: string) => {
     if (!currentUser) return
-
-    // Optimistic update
-    setFollowingUsers(prev => {
-      const newSet = new Set(prev)
-      newSet.delete(userId)
-      return newSet
-    })
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -190,14 +166,9 @@ export default function DiscoverPage() {
             ? { ...user, isFollowing: false, followers_count: user.followers_count - 1 }
             : user
         ))
-      } else {
-        // Revert optimistic update on error
-        setFollowingUsers(prev => new Set([...prev, userId]))
       }
     } catch (error) {
       console.error('Error unfollowing user:', error)
-      // Revert optimistic update on error
-      setFollowingUsers(prev => new Set([...prev, userId]))
     }
   }
 
@@ -353,7 +324,7 @@ export default function DiscoverPage() {
             {searchQuery && (
               <div className="text-center mt-2">
                 <p className="text-sm text-gray-500">
-                  Searching for "<span className="font-medium text-blue-600">{searchQuery}</span>"
+                  Searching for &ldquo;<span className="font-medium text-blue-600">{searchQuery}</span>&rdquo;
                 </p>
               </div>
             )}
