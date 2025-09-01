@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { ProfileCard } from '@/components/ProfileCard'
 import { ModernFeed } from '@/components/ModernFeed'
@@ -20,6 +20,27 @@ export default function UserProfile() {
   const [isFollowing, setIsFollowing] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set())
+  const [hasMore, setHasMore] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+
+  // Refs to track current values for fetchUserPosts to prevent stale closures
+  const hasMoreRef = useRef(hasMore)
+  const currentPageRef = useRef(currentPage)
+  const isLoadingMoreRef = useRef(isLoadingMore)
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    hasMoreRef.current = hasMore
+  }, [hasMore])
+
+  useEffect(() => {
+    currentPageRef.current = currentPage
+  }, [currentPage])
+
+  useEffect(() => {
+    isLoadingMoreRef.current = isLoadingMore
+  }, [isLoadingMore])
 
  
 
@@ -78,17 +99,75 @@ export default function UserProfile() {
     setIsLoading(false)
   }, [userId])
 
-  const fetchUserPosts = useCallback(async () => {
+  const fetchUserPosts = useCallback(async (reset = false) => {
+    // Check current state using refs to avoid stale closures
+    const currentHasMore = hasMoreRef.current;
+    const currentPageValue = currentPageRef.current;
+    const currentIsLoadingMore = isLoadingMoreRef.current;
+
+    // Prevent multiple simultaneous requests
+    if (!reset && (!currentHasMore || currentIsLoadingMore)) {
+      console.log('Skipping fetchUserPosts - hasMore:', currentHasMore, 'isLoading:', currentIsLoadingMore);
+      return;
+    }
+
     try {
-      const response = await fetch(`/api/posts?userId=${userId}`)
+      const targetPage = reset ? 1 : currentPageValue;
+      
+      if (!reset) {
+        setIsLoadingMore(true);
+      }
+      
+      console.log(`Fetching user posts: page ${targetPage}, reset: ${reset}`);
+      
+      const response = await fetch(`/api/posts?userId=${userId}&page=${targetPage}&limit=20`)
       if (response.ok) {
         const data = await response.json()
-        setPosts(data.posts || [])
+        const newPosts = data.posts || []
+        
+        console.log(`Fetched ${newPosts.length} user posts for page ${targetPage}`);
+        
+        if (reset) {
+          setPosts(newPosts)
+          setCurrentPage(2) // Next page to load
+        } else {
+          setPosts(prev => {
+            // Remove duplicates by id
+            const allPosts = [...prev, ...newPosts]
+            const uniquePosts = Array.from(new Map(allPosts.map(p => [p.id, p])).values())
+            return uniquePosts
+          })
+          setCurrentPage(prev => prev + 1)
+        }
+        
+        // Set hasMore based on whether we got a full page
+        setHasMore(newPosts.length === 20)
+      } else {
+        // If no posts or error, set hasMore to false
+        if (reset) {
+          setPosts([])
+        }
+        setHasMore(false)
       }
     } catch (error) {
       console.error('Error fetching user posts:', error)
+      setHasMore(false)
+    } finally {
+      if (!reset) {
+        setIsLoadingMore(false);
+      }
     }
-  }, [userId])
+  }, [userId]) // Only userId as dependency, using refs for other values
+
+  const loadMorePosts = useCallback(() => {
+    // Simple check using refs to prevent race conditions
+    if (!isLoadingMoreRef.current && hasMoreRef.current) {
+      console.log('✅ Loading more user posts - current page:', currentPageRef.current, 'hasMore:', hasMoreRef.current);
+      fetchUserPosts(false);
+    } else {
+      console.log('❌ Skipping load more user posts - isLoading:', isLoadingMoreRef.current, 'hasMore:', hasMoreRef.current);
+    }
+  }, [fetchUserPosts])
 
   const fetchLikedPosts = async (currentUserId: string) => {
     if (!currentUserId) {
@@ -115,7 +194,7 @@ export default function UserProfile() {
     if (userId) {
       fetchUserProfile()
       fetchCurrentUser()
-      fetchUserPosts()
+      fetchUserPosts(true) // Reset to first page
     }
   }, [userId, fetchUserProfile, fetchCurrentUser, fetchUserPosts])
 
@@ -374,7 +453,7 @@ export default function UserProfile() {
                   Posts by {user.username}
                 </h2>
               </div>
-              {posts.length > 0 ? (
+              {posts.length > 0 || isLoading ? (
                 <ModernFeed
                   posts={posts}
                   currentUserId={currentUser?.id || currentUserId || undefined}
@@ -389,6 +468,10 @@ export default function UserProfile() {
                   onDeletePost={async () => {}} // Fix this one too
                   likedPosts={likedPosts}
                   showCreateForm={false}
+                  hasMore={hasMore}
+                  isLoadingMore={isLoadingMore}
+                  onLoadMore={loadMorePosts}
+                  isLoading={isLoading}
                 />
               ) : (
                 <div className="p-8 text-center text-gray-500">
