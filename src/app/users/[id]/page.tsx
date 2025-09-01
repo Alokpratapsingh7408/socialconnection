@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { ProfileCard } from '@/components/ProfileCard'
 import { ModernFeed } from '@/components/ModernFeed'
@@ -21,17 +21,9 @@ export default function UserProfile() {
   const [isLoading, setIsLoading] = useState(true)
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set())
 
-  useEffect(() => {
-    if (userId) {
-      fetchUserProfile()
-      fetchCurrentUser()
-      fetchUserPosts()
-    }
-  }, [userId]) 
-  
-  // eslint-disable-line react-hooks/exhaustive-deps
+ 
 
-  const fetchCurrentUser = async () => {
+  const fetchCurrentUser = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       console.log('Session check:', session ? 'exists' : 'no session')
@@ -71,9 +63,9 @@ export default function UserProfile() {
       setCurrentUser(null)
       setCurrentUserId(null)
     }
-  }
+  }, [])
 
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = useCallback(async () => {
     try {
       const response = await fetch(`/api/users/${userId}`)
       if (response.ok) {
@@ -84,9 +76,9 @@ export default function UserProfile() {
       console.error('Error fetching user profile:', error)
     }
     setIsLoading(false)
-  }
+  }, [userId])
 
-  const fetchUserPosts = async () => {
+  const fetchUserPosts = useCallback(async () => {
     try {
       const response = await fetch(`/api/posts?userId=${userId}`)
       if (response.ok) {
@@ -96,7 +88,7 @@ export default function UserProfile() {
     } catch (error) {
       console.error('Error fetching user posts:', error)
     }
-  }
+  }, [userId])
 
   const fetchLikedPosts = async (currentUserId: string) => {
     if (!currentUserId) {
@@ -117,6 +109,15 @@ export default function UserProfile() {
       console.error('Error fetching liked posts:', error)
     }
   }
+
+
+   useEffect(() => {
+    if (userId) {
+      fetchUserProfile()
+      fetchCurrentUser()
+      fetchUserPosts()
+    }
+  }, [userId, fetchUserProfile, fetchCurrentUser, fetchUserPosts])
 
   const checkFollowStatus = async (currentUserId: string) => {
     if (!currentUserId || currentUserId === userId) {

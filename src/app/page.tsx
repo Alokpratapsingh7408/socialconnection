@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import debounce from 'lodash/debounce'
 import { ModernFeed } from '@/components/ModernFeed'
 import { EditPostForm } from '@/components/EditPostForm'
@@ -35,7 +35,31 @@ export default function Home() {
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(false)
   const [isAuthLoading, setIsAuthLoading] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
+  const [hasShownWelcomeMessage, setHasShownWelcomeMessage] = useState(false)
+  const [isUserInitiatedSignIn, setIsUserInitiatedSignIn] = useState(false)
   // Removed unused updateQueue state
+
+  // Refs to track current values for fetchPosts
+  const hasMoreRef = useRef(hasMore)
+  const currentPageRef = useRef(currentPage)
+  const isLoadingMoreRef = useRef(isLoadingMore)
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    hasMoreRef.current = hasMore
+  }, [hasMore])
+
+  useEffect(() => {
+    currentPageRef.current = currentPage
+  }, [currentPage])
+
+  useEffect(() => {
+    isLoadingMoreRef.current = isLoadingMore
+  }, [isLoadingMore])
 
   // Throttle post updates to prevent excessive re-renders
   const throttledSetPosts = useMemo(
@@ -89,6 +113,60 @@ export default function Home() {
     }
   }
 
+  const fetchPosts = useCallback(async (reset = false) => {
+    // Check current state using refs to avoid stale closures
+    const currentHasMore = hasMoreRef.current;
+    const currentPageValue = currentPageRef.current;
+    const currentIsLoadingMore = isLoadingMoreRef.current;
+
+    // Prevent multiple simultaneous requests
+    if (!reset && (!currentHasMore || currentIsLoadingMore)) {
+      return;
+    }
+
+    try {
+      const targetPage = reset ? 1 : currentPageValue;
+      const isFirstLoad = reset || targetPage === 1;
+
+      if (isFirstLoad) {
+        setIsLoading(true);
+      } else {
+        setIsLoadingMore(true);
+      }
+
+      console.log(`Fetching posts: page ${targetPage}, reset: ${reset}`);
+
+      const response = await fetch(`/api/posts?page=${targetPage}&limit=20`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        const newPosts = data.posts || [];
+        console.log(`Fetched ${newPosts.length} posts for page ${targetPage}`);
+        
+        if (reset) {
+          setPosts(newPosts);
+          setCurrentPage(2); // Next page to load
+        } else {
+          setPosts(prev => {
+            // Remove duplicates by id
+            const allPosts = [...prev, ...newPosts];
+            const uniquePosts = Array.from(new Map(allPosts.map(p => [p.id, p])).values());
+            return uniquePosts;
+          });
+          setCurrentPage(prev => prev + 1);
+        }
+        
+        // Set hasMore based on whether we got a full page
+        setHasMore(newPosts.length === 20);
+      }
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  }, []); // No dependencies - using refs instead
+
   useEffect(() => {
     // Handle email confirmation from URL
     const handleEmailConfirmation = async () => {
@@ -108,6 +186,7 @@ export default function Home() {
             setAuthError('Email verification failed. Please try again.')
           } else if (data.session) {
             setAuthMessage('Email verified successfully! Welcome!')
+            setHasShownWelcomeMessage(true) // Prevent duplicate welcome message
             // Clear the URL hash
             window.history.replaceState({}, document.title, window.location.pathname)
           }
@@ -133,6 +212,7 @@ export default function Home() {
         console.error('Error checking session:', error)
       } finally {
         setIsAuthLoading(false) // Set loading to false after auth check
+        setIsInitialLoad(false) // Mark initial load as complete
       }
     }
 
@@ -146,13 +226,22 @@ export default function Home() {
         if (event === 'SIGNED_IN' && session?.user) {
           setUser(session.user)
           setAuthStep('login')
-          setAuthMessage('Welcome! You are now signed in.')
+          
+          // Only show welcome message for user-initiated sign-ins
+          if (isUserInitiatedSignIn && !hasShownWelcomeMessage) {
+            setAuthMessage('Welcome! You are now signed in.')
+            setHasShownWelcomeMessage(true)
+            setIsUserInitiatedSignIn(false) // Reset the flag
+            // Auto-clear the message after 3 seconds
+            setTimeout(() => setAuthMessage(null), 3000)
+          }
+          
           setAuthError(null)
 
           // Check if user profile exists, if not create it (for email verification flow)
           try {
             await fetchUserProfile(session.user.id)
-          } catch (error) {
+          } catch {
             // If profile doesn't exist, try to create it
             console.log('Creating user profile after email verification...')
             try {
@@ -166,6 +255,7 @@ export default function Home() {
                 // Profile created, now fetch it
                 await fetchUserProfile(session.user.id)
                 setAuthMessage('Email verified successfully! Welcome to SocialConnect!')
+                setHasShownWelcomeMessage(true) // Prevent duplicate welcome message
               }
             } catch (verifyError) {
               console.error('Error creating profile after verification:', verifyError)
@@ -180,35 +270,38 @@ export default function Home() {
           setUserProfile(null)
           setPosts([])
           setLikedPosts(new Set())
+          setCurrentPage(1)
+          setHasMore(true)
           setAuthStep('login')
           setIsAuthLoading(false)
+          setHasShownWelcomeMessage(false) // Reset flag when user signs out
+          setIsUserInitiatedSignIn(false) // Reset user-initiated flag
         }
       }
     )
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [fetchPosts]) // Removed isInitialLoad from dependencies
 
   useEffect(() => {
     if (user) {
-      fetchPosts()
+      fetchPosts(true) // Reset to first page
       fetchLikedPosts(user.id)
     } else {
-      fetchPosts() // Show public posts even when not logged in
+      fetchPosts(true) // Show public posts even when not logged in, reset to first page
     }
-  }, [user])
+  }, [user, fetchPosts])
 
-  const fetchPosts = async () => {
-    try {
-      const response = await fetch('/api/posts')
-      const data = await response.json()
-      if (response.ok) {
-        setPosts(data.posts || [])
-      }
-    } catch (error) {
-      console.error('Error fetching posts:', error)
+  const loadMorePosts = useCallback(() => {
+    
+    // Simple check using refs to prevent race conditions
+    if (!isLoadingMoreRef.current && hasMoreRef.current) {
+      console.log('✅ Loading more posts - current page:', currentPageRef.current, 'hasMore:', hasMoreRef.current);
+      fetchPosts(false);
+    } else {
+      console.log('❌ Skipping load more - isLoading:', isLoadingMoreRef.current, 'hasMore:', hasMoreRef.current);
     }
-  }
+  }, [fetchPosts]);
 
   const fetchLikedPosts = async (userId: string) => {
     if (!userId) {
@@ -235,6 +328,7 @@ export default function Home() {
     setAuthError(null)
     setAuthMessage(null)
     setUserEmail(formData.email)
+    setIsUserInitiatedSignIn(true) // Mark this as user-initiated
 
     try {
       if (authStep === 'register') {
@@ -255,6 +349,7 @@ export default function Home() {
           } else if (data.session) {
             // User registered and automatically signed in (email confirmation disabled)
             setAuthMessage('Registration successful! Welcome!')
+            setHasShownWelcomeMessage(true) // Prevent duplicate welcome message
             setAuthStep('login')
           } else {
             // Registration successful, switch to login
@@ -272,6 +367,7 @@ export default function Home() {
         })
 
         if (error) {
+          setIsUserInitiatedSignIn(false) // Reset flag on error
           if (error.message.includes('Email not confirmed')) {
             setAuthStep('check-email')
             setAuthMessage('Please check your email and click the verification link to verify your account.')
@@ -279,12 +375,14 @@ export default function Home() {
             setAuthError(error.message)
           }
         } else if (data.session) {
-          setAuthMessage('Welcome back! Signed in successfully.')
+          // Message will be shown by auth state change listener
+          // setHasShownWelcomeMessage flag will be set there too
         }
       }
     } catch (error) {
       console.error('Auth error:', error)
       setAuthError('An unexpected error occurred. Please try again.')
+      setIsUserInitiatedSignIn(false) // Reset flag on error
     }
     setIsLoading(false)
   }
@@ -347,8 +445,8 @@ export default function Home() {
         const result = await response.json()
         console.log('Post created successfully:', result)
 
-        // Refresh posts
-        await fetchPosts()
+        // Refresh posts - reset to first page to show new post at top
+        await fetchPosts(true)
 
         // Show success message
         setAuthMessage('Post created successfully!')
@@ -454,7 +552,7 @@ export default function Home() {
 
       const data = await response.json()
       // Reload posts to update comment count
-      await fetchPosts()
+      await fetchPosts(true) // Reset and reload posts
       return data.comment
     } catch (error) {
       console.error('Error adding comment:', error)
@@ -746,7 +844,10 @@ export default function Home() {
             onEditPost={handleEditPost}
             onDeletePost={handleDeletePost}
             likedPosts={likedPosts}
-            isLoading={false}
+            isLoading={isLoading}
+            isLoadingMore={isLoadingMore}
+            hasMore={hasMore}
+            onLoadMore={loadMorePosts}
             showCreateForm={!!(user && user.id !== 'guest') && !editingPost}
           />
         </div>

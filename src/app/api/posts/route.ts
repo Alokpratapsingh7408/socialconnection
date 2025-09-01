@@ -156,7 +156,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const userId = searchParams.get('userId') // Get userId filter
-    const limit = 20
+    const limit = parseInt(searchParams.get('limit') || '20')
     const offset = (page - 1) * limit
 
     // Build query
@@ -183,7 +183,12 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({ posts, page, limit })
+    return NextResponse.json({ 
+      posts, 
+      page, 
+      limit,
+      hasMore: posts ? posts.length === limit : false
+    })
   } catch (error) {
     console.error('Get posts error:', error)
     return NextResponse.json(
