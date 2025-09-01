@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
@@ -35,6 +35,9 @@ export function CreatePostForm({ onSubmit, isLoading = false }: CreatePostFormPr
   const [uploadingImage, setUploadingImage] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const emojiPickerRef = useRef<HTMLDivElement>(null)
 
   // Get current user
   useEffect(() => {
@@ -44,6 +47,55 @@ export function CreatePostForm({ onSubmit, isLoading = false }: CreatePostFormPr
     }
     getCurrentUser()
   }, [])
+
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false)
+      }
+    }
+
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [showEmojiPicker])
+
+  const emojis = [
+    '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩',
+    '😘', '😗', '😚', '😙', '😋', '😛', '😜', '🤪', '😝', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐',
+    '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢',
+    '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '😮',
+    '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓',
+    '😩', '😫', '😤', '😡', '😠', '🤬', '😈', '👿', '💀', '👻', '👽', '👾', '🤖', '💩', '😺', '😸',
+    '👋', '🤚', '🖐', '✋', '🖖', '👌', '🤞', '✌️', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇',
+    '☝️', '👍', '👎', '👊', '✊', '🤛', '🤜', '👏', '🙌', '👐', '🤝', '🙏', '💪', '🦵', '🦶', '👂',
+    '👀', '🧠', '🦷', '🦴', '👅', '👄', '💋', '💘', '💝', '💖', '💗', '💓', '💞', '💕', '💟', '❣️',
+    '💔', '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💯', '💢', '💥', '💫', '💦', '💨',
+    '🎉', '🎊', '🎁', '🎈', '🎂', '🎀', '🎗️', '🏆', '🏅', '🥇', '🥈', '🥉', '⚽', '🏀', '🏈', '⚾',
+    '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🏓', '🏸', '🥅', '⛳', '🪁', '🏹', '🎣', '🤿', '🥊', '🥋'
+  ]
+
+  const handleEmojiSelect = (emoji: string) => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const newContent = content.substring(0, start) + emoji + content.substring(end)
+    
+    setContent(newContent)
+    setShowEmojiPicker(false)
+    
+    // Focus back to textarea and set cursor position
+    setTimeout(() => {
+      textarea.focus()
+      textarea.setSelectionRange(start + emoji.length, start + emoji.length)
+    }, 0)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -126,6 +178,7 @@ export function CreatePostForm({ onSubmit, isLoading = false }: CreatePostFormPr
               {/* Content Textarea */}
               <div className="relative">
                 <Textarea
+                  ref={textareaRef}
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="What's on your mind?"
@@ -185,7 +238,7 @@ export function CreatePostForm({ onSubmit, isLoading = false }: CreatePostFormPr
 
           {/* Footer Actions */}
           <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 relative">
               <Button
                 type="button"
                 variant="ghost"
@@ -200,15 +253,46 @@ export function CreatePostForm({ onSubmit, isLoading = false }: CreatePostFormPr
               >
                 <ImageIcon className="h-5 w-5" />
               </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50 rounded-full p-2"
-                disabled={uploadingImage || isLoading || localLoading}
-              >
-                <Smile className="h-5 w-5" />
-              </Button>
+              
+              <div className="relative">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className={`rounded-full p-2 ${
+                    showEmojiPicker
+                      ? 'text-yellow-600 bg-yellow-100'
+                      : 'text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50'
+                  }`}
+                  disabled={uploadingImage || isLoading || localLoading}
+                >
+                  <Smile className="h-5 w-5" />
+                </Button>
+                
+                {/* Emoji Picker */}
+                {showEmojiPicker && (
+                  <div 
+                    ref={emojiPickerRef}
+                    className="absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-2xl shadow-lg p-4 w-80 max-h-64 overflow-y-auto z-50"
+                  >
+                    <div className="text-sm font-medium text-gray-700 mb-3">Choose an emoji</div>
+                    <div className="grid grid-cols-8 gap-2">
+                      {emojis.map((emoji, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => handleEmojiSelect(emoji)}
+                          className="text-2xl hover:bg-gray-100 rounded-lg p-2 transition-colors duration-150 flex items-center justify-center"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              
               <Button
                 type="button"
                 variant="ghost"
