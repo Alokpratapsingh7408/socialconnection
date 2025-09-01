@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+    <linearGradient id="cardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="100%" style="stop-color:#f8fafc"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bgGradient)"/>
+  
+  <!-- Decorative background circles -->
+  <circle cx="200" cy="150" r="100" fill="white" opacity="0.1"/>
+  <circle cx="1000" cy="480" r="80" fill="white" opacity="0.15"/>
+  <circle cx="100" cy="500" r="60" fill="white" opacity="0.08"/>
+  
+  <!-- Main content area -->
+  <rect x="100" y="80" width="1000" height="470" rx="40" fill="url(#cardGradient)" opacity="0.95"/>
+  
+  <!-- Logo area -->
+  <circle cx="250" cy="200" r="60" fill="url(#bgGradient)"/>
+  <!-- Connected nodes in logo -->
+  <circle cx="250" cy="200" r="12" fill="white"/>
+  <circle cx="220" cy="170" r="8" fill="white" opacity="0.9"/>
+  <circle cx="280" cy="170" r="8" fill="white" opacity="0.9"/>
+  <circle cx="220" cy="230" r="8" fill="white" opacity="0.9"/>
+  <circle cx="280" cy="230" r="8" fill="white" opacity="0.9"/>
+  <!-- Connection lines -->
+  <line x1="228" y1="178" x2="242" y2="192" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <line x1="272" y1="178" x2="258" y2="192" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <line x1="228" y1="222" x2="242" y2="208" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <line x1="272" y1="222" x2="258" y2="208" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Title -->
+  <text x="400" y="220" font-family="Arial, sans-serif" font-size="80" font-weight="bold" fill="#1f2937">
+    SocialConnect
+  </text>
+  
+  <!-- Tagline -->
+  <text x="400" y="280" font-family="Arial, sans-serif" font-size="32" fill="#6b7280">
+    Connect, Share, Discover
+  </text>
+  
+  <!-- Description -->
+  <text x="400" y="340" font-family="Arial, sans-serif" font-size="24" fill="#9ca3af">
+    A modern social media platform for connecting people,
+  </text>
+  <text x="400" y="370" font-family="Arial, sans-serif" font-size="24" fill="#9ca3af">
+    sharing moments, and building communities.
+  </text>
+  
+  <!-- Features -->
+  <g transform="translate(400, 420)">
+    <!-- Feature dots -->
+    <circle cx="0" cy="0" r="4" fill="#667eea"/>
+    <text x="20" y="6" font-family="Arial, sans-serif" font-size="18" fill="#4b5563">Share Posts &amp; Photos</text>
+    
+    <circle cx="220" cy="0" r="4" fill="#667eea"/>
+    <text x="240" y="6" font-family="Arial, sans-serif" font-size="18" fill="#4b5563">Follow Friends</text>
+    
+    <circle cx="400" cy="0" r="4" fill="#667eea"/>
+    <text x="420" y="6" font-family="Arial, sans-serif" font-size="18" fill="#4b5563">Real-time Notifications</text>
+  </g>
+</svg>
