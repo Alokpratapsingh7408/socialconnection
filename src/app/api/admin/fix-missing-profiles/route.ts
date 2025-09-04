@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     // Get all users from Supabase Auth
     const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers()
@@ -16,7 +16,13 @@ export async function POST(request: NextRequest) {
       created: 0,
       skipped: 0,
       errors: 0,
-      details: [] as any[]
+      details: [] as Array<{
+        id: string;
+        email: string | undefined;
+        username?: string;
+        status: 'skipped' | 'error' | 'created';
+        reason?: string;
+      }>
     }
 
     for (const authUser of authUsers.users) {

@@ -38,7 +38,6 @@ export default function Home() {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
-  const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [hasShownWelcomeMessage, setHasShownWelcomeMessage] = useState(false)
   const [isUserInitiatedSignIn, setIsUserInitiatedSignIn] = useState(false)
   // Removed unused updateQueue state
@@ -212,7 +211,6 @@ export default function Home() {
         console.error('Error checking session:', error)
       } finally {
         setIsAuthLoading(false) // Set loading to false after auth check
-        setIsInitialLoad(false) // Mark initial load as complete
       }
     }
 
@@ -281,7 +279,7 @@ export default function Home() {
     )
 
     return () => subscription.unsubscribe()
-  }, [fetchPosts]) // Removed isInitialLoad from dependencies
+  }, [fetchPosts, hasShownWelcomeMessage, isUserInitiatedSignIn])
 
   useEffect(() => {
     if (user) {

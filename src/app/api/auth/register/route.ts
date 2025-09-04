@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
         data: {
           username,
         },
-        emailRedirectTo: `${siteUrl}/auth`
+        emailRedirectTo: `${siteUrl}/`
       }
     })
 
