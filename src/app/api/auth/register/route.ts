@@ -56,7 +56,8 @@ export async function POST(request: NextRequest) {
       options: {
         data: {
           username,
-        }
+        },
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://socialconnection.vercel.app'}/auth`
       }
     })
 

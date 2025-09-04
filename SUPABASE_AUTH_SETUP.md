@@ -13,8 +13,10 @@ To enable proper email verification for user registration, you need to configure
 
 ### 2. **Configure Site URLs**
 1. **In Authentication > Settings**
-2. **Set Site URL to:** `http://localhost:3000` (or your domain)
-3. **Add Redirect URLs:** `http://localhost:3000/**`
+2. **Set Site URL to:** `https://socialconnection.vercel.app` (your production domain)
+3. **Add Redirect URLs:** 
+   - `http://localhost:3000/**` (for local development)
+   - `https://socialconnection.vercel.app/**` (for production)
 4. **Click Save**
 
 ### 3. **Email Templates (Optional)**

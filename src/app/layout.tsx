@@ -22,11 +22,11 @@ export const metadata: Metadata = {
   authors: [{ name: "SocialConnect Team" }],
   creator: "SocialConnect",
   publisher: "SocialConnect",
-  metadataBase: new URL('https://socialconnect.app'),
+  metadataBase: new URL('https://socialconnection.vercel.app'),
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://socialconnect.app",
+    url: "https://socialconnection.vercel.app",
     title: "SocialConnect",
     description: "A modern social media platform for connecting people, sharing moments, and building communities.",
     siteName: "SocialConnect",

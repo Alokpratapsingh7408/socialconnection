@@ -2,6 +2,8 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// Define site URL for use in auth operations
+export const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://socialconnection.vercel.app'
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
