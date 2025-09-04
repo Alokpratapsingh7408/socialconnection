@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { supabase } from '@/lib/supabaseClient'
+import { getSiteUrl } from '@/lib/url'
 
 // Simple validation function
 function validateRegisterData(data: unknown) {
@@ -49,6 +50,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Get the site URL for redirects
+    const siteUrl = getSiteUrl()
+    
     // Use standard signup flow which sends verification email automatically
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -57,7 +61,7 @@ export async function POST(request: NextRequest) {
         data: {
           username,
         },
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://socialconnection.vercel.app'}/auth`
+        emailRedirectTo: `${siteUrl}/auth`
       }
     })
 
