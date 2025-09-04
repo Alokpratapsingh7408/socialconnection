@@ -36,6 +36,47 @@ export async function GET(request: NextRequest) {
       .single()
 
     if (profileError) {
+      // If profile doesn't exist, try to create it from auth user data
+      const username = user.user_metadata?.username
+      
+      if (username && user.email) {
+        try {
+          // Create user profile in our users table
+          const { data: newProfile, error: createError } = await supabaseAdmin
+            .from('users')
+            .insert({
+              id: user.id,
+              email: user.email,
+              username,
+              followers_count: 0,
+              following_count: 0,
+              posts_count: 0,
+              is_private: false,
+              is_admin: false,
+              is_active: true,
+            })
+            .select()
+            .single()
+
+          if (createError) {
+            console.error('Profile auto-creation error:', createError)
+            return NextResponse.json({ error: 'Profile not found and could not be created' }, { status: 404 })
+          }
+
+          // Use the newly created profile
+          const profileWithStats = {
+            ...newProfile,
+            posts_count: 0,
+            followers_count: 0,
+            following_count: 0
+          }
+
+          return NextResponse.json({ profile: profileWithStats })
+        } catch (createErr) {
+          console.error('Profile auto-creation exception:', createErr)
+        }
+      }
+      
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
     }
 

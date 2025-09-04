@@ -70,44 +70,50 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
-    if (data.user && !data.session) {
-      // User created but email not verified yet
-      return NextResponse.json({
-        message: 'Registration successful! Please check your email to verify your account before signing in.',
-        user: data.user,
-        needsVerification: true
-      })
-    } else if (data.session && data.user) {
-      // User created and automatically signed in (email confirmation disabled in Supabase)
-      // Create user profile in our users table
-      const { error: profileError } = await supabaseAdmin
-        .from('users')
-        .insert({
-          id: data.user.id,
-          email: data.user.email!,
-          username,
-          followers_count: 0,
-          following_count: 0,
-          posts_count: 0,
-          is_private: false,
-          is_admin: false,
-          is_active: true,
-        })
+    // Always create the user profile if the user was created successfully
+    if (data.user) {
+      try {
+        // Create user profile in our users table
+        const { error: profileError } = await supabaseAdmin
+          .from('users')
+          .insert({
+            id: data.user.id,
+            email: data.user.email!,
+            username,
+            followers_count: 0,
+            following_count: 0,
+            posts_count: 0,
+            is_private: false,
+            is_admin: false,
+            is_active: true,
+          })
 
-      if (profileError) {
-        console.error('Profile creation error:', profileError)
-        return NextResponse.json(
-          { error: 'Failed to create user profile' },
-          { status: 500 }
-        )
+        if (profileError) {
+          console.error('Profile creation error:', profileError)
+          // If profile creation fails, we should still return success for the auth user
+          // but log the error for debugging
+          console.error('User was created in auth but profile creation failed:', profileError)
+        }
+      } catch (profileErr) {
+        console.error('Profile creation exception:', profileErr)
       }
 
-      return NextResponse.json({
-        message: 'Registration successful! You are now signed in.',
-        user: data.user,
-        session: data.session,
-        needsVerification: false
-      })
+      if (data.session) {
+        // User created and automatically signed in (email confirmation disabled in Supabase)
+        return NextResponse.json({
+          message: 'Registration successful! You are now signed in.',
+          user: data.user,
+          session: data.session,
+          needsVerification: false
+        })
+      } else {
+        // User created but email not verified yet
+        return NextResponse.json({
+          message: 'Registration successful! Please check your email to verify your account before signing in.',
+          user: data.user,
+          needsVerification: true
+        })
+      }
     }
 
     return NextResponse.json({

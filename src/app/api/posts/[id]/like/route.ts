@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin, supabase } from '@/lib/supabaseAdmin'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { supabase } from '@/lib/supabaseClient'
 
 // Like a post
 export async function POST(
@@ -63,29 +64,39 @@ export async function POST(
     if (post.user_id !== user.id) {
       console.log('Creating like notification for user:', post.user_id)
       
-      const { data: liker } = await supabaseAdmin
-        .from('users')
-        .select('username')
-        .eq('id', user.id)
-        .single()
+      try {
+        const { data: liker } = await supabaseAdmin
+          .from('users')
+          .select('username')
+          .eq('id', user.id)
+          .single()
 
-      const { data: notification, error: notificationError } = await supabaseAdmin
-        .from('notifications')
-        .insert({
-          user_id: post.user_id,
-          type: 'like',
-          message: `${liker?.username || 'Someone'} liked your post`,
-          related_user_id: user.id,
-          related_post_id: id,
-          is_read: false
-        })
-        .select()
-        .single()
+        // Only create notification if we can get the liker's info
+        if (liker?.username) {
+          const { data: notification, error: notificationError } = await supabaseAdmin
+            .from('notifications')
+            .insert({
+              user_id: post.user_id,
+              type: 'like',
+              message: `${liker.username} liked your post`,
+              related_user_id: user.id,
+              related_post_id: id,
+              is_read: false
+            })
+            .select()
+            .single()
 
-      if (notificationError) {
-        console.error('Error creating like notification:', notificationError)
-      } else {
-        console.log('Like notification created successfully:', notification)
+          if (notificationError) {
+            console.error('Error creating like notification:', notificationError)
+          } else {
+            console.log('Like notification created successfully:', notification)
+          }
+        } else {
+          console.log('Could not find liker profile, skipping notification')
+        }
+      } catch (notifErr) {
+        console.error('Error in notification creation process:', notifErr)
+        // Don't fail the like operation if notification creation fails
       }
     }
 
