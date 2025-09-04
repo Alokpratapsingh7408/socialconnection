@@ -44,6 +44,52 @@ export default function UserProfile() {
 
  
 
+  const fetchLikedPosts = useCallback(async (currentUserId: string) => {
+    if (!currentUserId) {
+      console.warn('Cannot fetch liked posts: currentUserId is undefined')
+      return
+    }
+    
+    console.log('Fetching liked posts for user:', currentUserId)
+    
+    try {
+      const { data } = await supabase
+        .from('likes')
+        .select('post_id')
+        .eq('user_id', currentUserId)
+      
+      console.log('Liked posts data:', data)
+      
+      if (data) {
+        const likedPostIds = new Set(data.map(like => like.post_id))
+        setLikedPosts(likedPostIds)
+        console.log('Updated liked posts set:', likedPostIds)
+      }
+    } catch (error) {
+      console.error('Error fetching liked posts:', error)
+    }
+  }, [])
+
+  const checkFollowStatus = useCallback(async (currentUserId: string) => {
+    if (!currentUserId || currentUserId === userId) {
+      console.warn('Cannot check follow status: currentUserId is undefined or same as target user')
+      return
+    }
+
+    try {
+      const { data } = await supabase
+        .from('follows')
+        .select('id')
+        .eq('follower_id', currentUserId)
+        .eq('following_id', userId)
+        .single()
+      
+      setIsFollowing(!!data)
+    } catch (error) {
+      console.error('Error checking follow status:', error)
+    }
+  }, [userId])
+
   const fetchCurrentUser = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -66,25 +112,29 @@ export default function UserProfile() {
           setCurrentUser(userData)
           // Only call these functions if we have a valid user ID
           if (userData && userData.id) {
-            checkFollowStatus(userData.id)
-            fetchLikedPosts(userData.id)
+            await checkFollowStatus(userData.id)
+            await fetchLikedPosts(userData.id)
           }
         } else {
           console.error('API call failed:', response.status, response.statusText)
           // Even if API fails, we still have the user ID from session
+          // Still fetch liked posts with the session user ID
+          await fetchLikedPosts(session.user.id)
         }
       } else {
         // No session means user is not authenticated
         console.log('No session found - user not authenticated')
         setCurrentUser(null)
         setCurrentUserId(null)
+        setLikedPosts(new Set()) // Clear liked posts when not authenticated
       }
     } catch (error) {
       console.error('Error fetching current user:', error)
       setCurrentUser(null)
       setCurrentUserId(null)
+      setLikedPosts(new Set()) // Clear liked posts on error
     }
-  }, [])
+  }, [fetchLikedPosts, checkFollowStatus])
 
   const fetchUserProfile = useCallback(async () => {
     try {
@@ -169,27 +219,6 @@ export default function UserProfile() {
     }
   }, [fetchUserPosts])
 
-  const fetchLikedPosts = async (currentUserId: string) => {
-    if (!currentUserId) {
-      console.warn('Cannot fetch liked posts: currentUserId is undefined')
-      return
-    }
-    
-    try {
-      const { data } = await supabase
-        .from('likes')
-        .select('post_id')
-        .eq('user_id', currentUserId)
-      
-      if (data) {
-        setLikedPosts(new Set(data.map(like => like.post_id)))
-      }
-    } catch (error) {
-      console.error('Error fetching liked posts:', error)
-    }
-  }
-
-
    useEffect(() => {
     if (userId) {
       fetchUserProfile()
@@ -198,25 +227,13 @@ export default function UserProfile() {
     }
   }, [userId, fetchUserProfile, fetchCurrentUser, fetchUserPosts])
 
-  const checkFollowStatus = async (currentUserId: string) => {
-    if (!currentUserId || currentUserId === userId) {
-      console.warn('Cannot check follow status: currentUserId is undefined or same as target user')
-      return
+  // Separate effect to refresh liked posts when currentUser changes
+  useEffect(() => {
+    const userId = currentUser?.id || currentUserId
+    if (userId) {
+      fetchLikedPosts(userId)
     }
-
-    try {
-      const { data } = await supabase
-        .from('follows')
-        .select('id')
-        .eq('follower_id', currentUserId)
-        .eq('following_id', userId)
-        .single()
-      
-      setIsFollowing(!!data)
-    } catch (error) {
-      console.error('Error checking follow status:', error)
-    }
-  }
+  }, [currentUser, currentUserId, fetchLikedPosts])
 
   const handleFollow = async () => {
     if (!currentUser) return
@@ -318,36 +335,67 @@ export default function UserProfile() {
   }
 
   const handleLike = async (postId: string) => {
-    if (!currentUser) return
+    if (!currentUser && !currentUserId) return
+
+    console.log('Handling like for post:', postId, 'isLiked:', likedPosts.has(postId))
 
     try {
       const isLiked = likedPosts.has(postId)
       const { data: { session } } = await supabase.auth.getSession()
       
+      if (!session?.access_token) {
+        console.error('No access token available for like operation')
+        return
+      }
+      
+      // Optimistically update the UI first
+      const newLikedPosts = new Set(likedPosts)
+      if (isLiked) {
+        newLikedPosts.delete(postId)
+      } else {
+        newLikedPosts.add(postId)
+      }
+      setLikedPosts(newLikedPosts)
+      
+      // Update post count optimistically
+      setPosts(prev => prev.map(post => 
+        post.id === postId 
+          ? { ...post, like_count: post.like_count + (isLiked ? -1 : 1) }
+          : post
+      ))
+
       const response = await fetch(`/api/posts/${postId}/like`, {
         method: isLiked ? 'DELETE' : 'POST',
         headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
       })
 
       if (response.ok) {
-        const newLikedPosts = new Set(likedPosts)
-        if (isLiked) {
-          newLikedPosts.delete(postId)
-        } else {
-          newLikedPosts.add(postId)
+        console.log('Like operation successful, refreshing liked posts')
+        // Refresh the liked posts from the database to ensure consistency
+        const userId = currentUser?.id || currentUserId
+        if (userId) {
+          await fetchLikedPosts(userId)
         }
-        setLikedPosts(newLikedPosts)
-        
+      } else {
+        console.error('Like operation failed, reverting UI changes')
+        // Revert the optimistic updates if the API call failed
+        setLikedPosts(likedPosts) // Revert to original state
         setPosts(prev => prev.map(post => 
           post.id === postId 
-            ? { ...post, like_count: post.like_count + (isLiked ? -1 : 1) }
+            ? { ...post, like_count: post.like_count + (isLiked ? 1 : -1) }
             : post
         ))
       }
     } catch (error) {
       console.error('Error toggling like:', error)
+      // Revert optimistic updates on error
+      setPosts(prev => prev.map(post => 
+        post.id === postId 
+          ? { ...post, like_count: post.like_count + (likedPosts.has(postId) ? 1 : -1) }
+          : post
+      ))
     }
   }
 
